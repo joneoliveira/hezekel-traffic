@@ -26,7 +26,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center pb-2">
-          <img src="/logo.webp" alt="Império Médico" className="h-16 w-auto mx-auto mb-2" />
+          <img src="/logo.svg" alt="Hezekel Traffic" className="h-16 w-auto mx-auto mb-2" />
           <CardTitle className="text-xl">Central de Comando</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">Faça login para continuar</p>
         </CardHeader>

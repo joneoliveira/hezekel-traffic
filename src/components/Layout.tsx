@@ -106,7 +106,7 @@ export default function Layout({ children, currentPage, onNavigate }: LayoutProp
         >
           <Menu className="w-4 h-4" />
         </button>
-        <img src="/logo.webp" alt="Império Médico" className="h-7 w-auto" />
+        <img src="/logo.svg" alt="Hezekel Traffic" className="h-7 w-auto" />
         <div className="flex-1" />
         {activeAccount && (
           <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground border-r border-border pr-3 mr-1">
