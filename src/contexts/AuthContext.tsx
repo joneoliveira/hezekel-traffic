@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
 
-export type UserRole = 'gestor' | 'gestor_trafego' | 'marketing';
+export type UserRole = 'super_admin' | 'gestor' | 'gestor_trafego' | 'marketing';
 
 interface AuthContextValue {
   user: User | null;
@@ -75,6 +75,7 @@ export function useAuth() {
 
 export function canAccess(role: UserRole | null, page: string): boolean {
   if (!role) return false;
+  if (role === 'super_admin') return true;
   if (role === 'gestor') return true;
   if (role === 'gestor_trafego') return page !== 'settings';
   if (role === 'marketing') return page === 'creative' || page === 'content' || page === 'content_intelligence' || page === 'organic_intelligence';

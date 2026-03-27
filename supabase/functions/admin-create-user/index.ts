@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
       .select('role')
       .eq('user_id', caller.id)
       .single();
-    if (roleRow?.role !== 'gestor') throw new Error('Apenas gestores podem criar usuários.');
+    if (roleRow?.role !== 'super_admin') throw new Error('Apenas o super admin pode criar usuários.');
 
     const { email, password, role } = await req.json();
     if (!email || !password || !role) throw new Error('email, password e role são obrigatórios.');

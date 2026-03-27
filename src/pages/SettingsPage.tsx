@@ -599,7 +599,7 @@ export default function SettingsPage() {
 
       <SyncSection />
 
-      {role === 'gestor' && <ClientsSection />}
+      {role === 'super_admin' && <ClientsSection />}
 
       <Card>
         <CardHeader>
@@ -633,9 +633,9 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {role === 'gestor' && <AddAccountForm onAdded={reload} />}
+      {(role === 'super_admin' || role === 'gestor') && <AddAccountForm onAdded={reload} />}
 
-      {role === 'gestor' && <UserManagement />}
+      {role === 'super_admin' && <UserManagement />}
     </div>
   );
 }

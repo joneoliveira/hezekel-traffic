@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
       .select('role')
       .eq('user_id', caller.id)
       .single();
-    if (roleRow?.role !== 'gestor') throw new Error('Apenas gestores podem remover usuários.');
+    if (roleRow?.role !== 'super_admin') throw new Error('Apenas o super admin pode remover usuários.');
 
     const { user_id } = await req.json();
     if (!user_id) throw new Error('user_id é obrigatório.');
