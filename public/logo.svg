@@ -1,18 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 46">
-  <!-- Ascending bars (traffic signal) -->
-  <rect x="2"  y="32" width="9" height="12" rx="2" fill="#C8922A" opacity="0.55"/>
-  <rect x="15" y="23" width="9" height="21" rx="2" fill="#C8922A" opacity="0.70"/>
-  <rect x="28" y="13" width="9" height="31" rx="2" fill="#C8922A" opacity="0.85"/>
-  <rect x="41" y="3"  width="9" height="41" rx="2" fill="#C8922A"/>
+  <!-- Ascending bars -->
+  <rect x="2"  y="32" width="9" height="12" rx="2" fill="#1a1a1a" opacity="0.30"/>
+  <rect x="15" y="23" width="9" height="21" rx="2" fill="#1a1a1a" opacity="0.50"/>
+  <rect x="28" y="13" width="9" height="31" rx="2" fill="#1a1a1a" opacity="0.72"/>
+  <rect x="41" y="3"  width="9" height="41" rx="2" fill="#1a1a1a"/>
 
   <!-- Separator -->
-  <line x1="63" y1="7" x2="63" y2="39" stroke="#C8922A" stroke-width="0.8" opacity="0.3"/>
+  <line x1="63" y1="7" x2="63" y2="39" stroke="#1a1a1a" stroke-width="0.8" opacity="0.15"/>
 
   <!-- Brand name -->
   <text x="72" y="30"
         font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif"
-        font-size="21" font-weight="800" fill="#EDE4CE" letter-spacing="0.5">HEZEKEL</text>
+        font-size="21" font-weight="800" fill="#0f0f0f" letter-spacing="0.5">HEZEKEL</text>
   <text x="73" y="41"
         font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif"
-        font-size="9" font-weight="500" fill="#C8922A" letter-spacing="5.2">TRAFFIC</text>
+        font-size="9" font-weight="500" fill="#666666" letter-spacing="5.2">TRAFFIC</text>
 </svg>
