@@ -6,6 +6,7 @@ import { Users, Loader2, Trash2, Plus, CheckCircle2, AlertCircle } from 'lucide-
 import type { UserRole } from '@/contexts/AuthContext';
 
 const ROLE_LABELS: Record<UserRole, string> = {
+  super_admin: 'Super Admin',
   gestor: 'Gestor',
   gestor_trafego: 'Gestor de Tráfego',
   marketing: 'Time Marketing',

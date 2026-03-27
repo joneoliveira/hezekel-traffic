@@ -170,6 +170,7 @@ interface ClientUser {
 }
 
 const ROLE_LABELS: Record<UserRole, string> = {
+  super_admin: 'Super Admin',
   gestor: 'Gestor',
   gestor_trafego: 'Gestor de Tráfego',
   marketing: 'Time Marketing',
