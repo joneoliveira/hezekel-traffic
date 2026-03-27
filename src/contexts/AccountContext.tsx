@@ -7,6 +7,7 @@ export interface MetaAccount {
   access_token: string;
   ad_account_id: string;
   is_active: boolean;
+  client_id: string;
   created_at: string;
 }
 
@@ -15,7 +16,7 @@ interface AccountContextValue {
   activeAccount: MetaAccount | null;
   loading: boolean;
   switchAccount: (id: string) => Promise<void>;
-  addAccount: (name: string, adAccountId: string) => Promise<MetaAccount>;
+  addAccount: (name: string, adAccountId: string, clientId: string) => Promise<MetaAccount>;
   updateAccountName: (id: string, name: string) => Promise<void>;
   deleteAccount: (id: string) => Promise<void>;
   reload: () => Promise<void>;
@@ -24,56 +25,62 @@ interface AccountContextValue {
 const AccountContext = createContext<AccountContextValue>({
   accounts: [], activeAccount: null, loading: true,
   switchAccount: async () => {},
-  addAccount: async () => { throw new Error('not ready') as any; },
+  addAccount: async () => { throw new Error('not ready'); },
   updateAccountName: async () => {},
   deleteAccount: async () => {},
   reload: async () => {},
 });
 
-export function AccountProvider({ children }: { children: React.ReactNode }) {
+export function AccountProvider({ clientId, children }: { clientId: string | null; children: React.ReactNode }) {
   const [accounts, setAccounts] = useState<MetaAccount[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
+    if (!clientId) {
+      setAccounts([]);
+      setLoading(false);
+      return;
+    }
     const { data } = await supabase
       .from('meta_accounts')
       .select('*')
+      .eq('client_id', clientId)
       .order('created_at', { ascending: true });
     setAccounts((data as MetaAccount[]) ?? []);
     setLoading(false);
-  }, []);
+  }, [clientId]);
 
   useEffect(() => { load(); }, [load]);
 
   const activeAccount = accounts.find(a => a.is_active) ?? null;
 
   const switchAccount = useCallback(async (id: string) => {
-    // Update UI instantly
     setAccounts(prev => prev.map(a => ({ ...a, is_active: a.id === id })));
-    // Persist in background
-    await supabase.from('meta_accounts').update({ is_active: false }).neq('id', id);
+    if (clientId) {
+      await supabase.from('meta_accounts').update({ is_active: false }).eq('client_id', clientId).neq('id', id);
+    }
     await supabase.from('meta_accounts').update({ is_active: true }).eq('id', id);
-    // Keep app_settings in sync for any legacy reads
     const account = accounts.find(a => a.id === id);
     if (account) {
       const updates: any[] = [{ key: 'meta_ad_account_id', value: account.ad_account_id }];
-      // Only overwrite global token if this account has its own token stored
       if (account.access_token) updates.push({ key: 'meta_access_token', value: account.access_token });
       await supabase.from('app_settings').upsert(updates, { onConflict: 'key' });
     }
-  }, [accounts]);
+  }, [accounts, clientId]);
 
-  const addAccount = useCallback(async (name: string, adAccountId: string) => {
+  const addAccount = useCallback(async (name: string, adAccountId: string, newClientId: string) => {
     const isFirst = accounts.length === 0;
     const { data, error } = await supabase
       .from('meta_accounts')
-      .insert({ name, access_token: '', ad_account_id: adAccountId, is_active: isFirst })
-      .select().single();
+      .insert({ name, access_token: '', ad_account_id: adAccountId, is_active: isFirst, client_id: newClientId })
+      .select()
+      .single();
     if (error) throw new Error(error.message);
     if (isFirst) {
-      await supabase.from('app_settings').upsert([
-        { key: 'meta_ad_account_id', value: adAccountId },
-      ], { onConflict: 'key' });
+      await supabase.from('app_settings').upsert(
+        [{ key: 'meta_ad_account_id', value: adAccountId }],
+        { onConflict: 'key' }
+      );
     }
     await load();
     return data as MetaAccount;

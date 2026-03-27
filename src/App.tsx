@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { AuthProvider, useAuth, canAccess } from './contexts/AuthContext';
+import { ClientProvider, useClientContext } from './contexts/ClientContext';
 import { AccountProvider } from './contexts/AccountContext';
 import Layout, { type Page } from './components/Layout';
 import LoginPage from './pages/LoginPage';
@@ -11,10 +12,25 @@ import ContentIntelligencePage from './pages/ContentIntelligencePage';
 import OrganicIntelligencePage from './pages/OrganicIntelligencePage';
 import { Loader2 } from 'lucide-react';
 
+function AppWithClient({ effectivePage, onNavigate }: { effectivePage: Page; onNavigate: (p: Page) => void }) {
+  const { activeClient } = useClientContext();
+  return (
+    <AccountProvider clientId={activeClient?.id ?? null}>
+      <Layout currentPage={effectivePage} onNavigate={onNavigate}>
+        {effectivePage === 'dashboard' && <DashboardPage />}
+        {effectivePage === 'creative' && <CreativeIntelligencePage />}
+        {effectivePage === 'settings' && <SettingsPage />}
+        {effectivePage === 'content' && <ContentPerformancePage />}
+        {effectivePage === 'content_intelligence' && <ContentIntelligencePage />}
+        {effectivePage === 'organic_intelligence' && <OrganicIntelligencePage />}
+      </Layout>
+    </AccountProvider>
+  );
+}
+
 function AppInner() {
   const { user, role, loading } = useAuth();
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
-
 
   if (loading) {
     return (
@@ -26,22 +42,14 @@ function AppInner() {
 
   if (!user || !role) return <LoginPage />;
 
-  // Redirect to first accessible page if current is not allowed
   const effectivePage: Page = canAccess(role, currentPage)
     ? currentPage
     : role === 'marketing' ? 'content_intelligence' : 'dashboard';
 
   return (
-    <AccountProvider>
-      <Layout currentPage={effectivePage} onNavigate={setCurrentPage}>
-        {effectivePage === 'dashboard' && <DashboardPage />}
-        {effectivePage === 'creative' && <CreativeIntelligencePage />}
-        {effectivePage === 'settings' && <SettingsPage />}
-        {effectivePage === 'content' && <ContentPerformancePage />}
-        {effectivePage === 'content_intelligence' && <ContentIntelligencePage />}
-        {effectivePage === 'organic_intelligence' && <OrganicIntelligencePage />}
-      </Layout>
-    </AccountProvider>
+    <ClientProvider>
+      <AppWithClient effectivePage={effectivePage} onNavigate={setCurrentPage} />
+    </ClientProvider>
   );
 }
 

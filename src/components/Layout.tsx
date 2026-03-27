@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { Layers, Settings, LayoutDashboard, Menu, ChevronDown, Check, Loader2, Building2, LogOut, Film, Leaf } from 'lucide-react';
+import { Layers, Settings, LayoutDashboard, Menu, ChevronDown, Check, Loader2, Building2, LogOut, Film, Leaf, Briefcase } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAccountContext } from '@/contexts/AccountContext';
+import { useClientContext } from '@/contexts/ClientContext';
 import { useAuth, canAccess } from '@/contexts/AuthContext';
 
 export type Page = 'dashboard' | 'creative' | 'settings' | 'content' | 'content_intelligence' | 'organic_intelligence';
@@ -20,6 +21,53 @@ const NAV_ITEMS: { id: Page; label: string; icon: React.ComponentType<any> }[] =
   { id: 'content', label: 'Métricas Conteúdo', icon: Building2 },
   { id: 'settings', label: 'Configurações', icon: Settings },
 ];
+
+function ClientSwitcherHeader() {
+  const { clients, activeClient, setActiveClientId } = useClientContext();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  if (clients.length === 0) return null;
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-background hover:bg-muted transition-colors text-sm"
+      >
+        <Briefcase className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+        <span className="font-medium max-w-[160px] truncate">{activeClient?.name ?? '—'}</span>
+        <ChevronDown className={cn('w-3.5 h-3.5 text-muted-foreground transition-transform', open && 'rotate-180')} />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-1 w-72 bg-popover border border-border rounded-lg shadow-lg z-50 py-1 overflow-hidden">
+          <p className="px-3 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Trocar cliente</p>
+          {clients.map(client => (
+            <button
+              key={client.id}
+              onClick={() => { setActiveClientId(client.id); setOpen(false); }}
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm hover:bg-muted transition-colors text-left"
+            >
+              <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                {client.id === activeClient?.id && <Check className="w-3.5 h-3.5 text-primary" />}
+              </div>
+              <span className={cn('truncate', client.id === activeClient?.id && 'font-semibold')}>{client.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function AccountSwitcherHeader() {
   const { accounts, activeAccount, switchAccount } = useAccountContext();
@@ -114,6 +162,7 @@ export default function Layout({ children, currentPage, onNavigate }: LayoutProp
             <span className="font-mono">{activeAccount.ad_account_id}</span>
           </div>
         )}
+        <ClientSwitcherHeader />
         <AccountSwitcherHeader />
         <button
           onClick={signOut}
