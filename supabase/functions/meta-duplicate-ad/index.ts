@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const GRAPH_BASE = 'https://graph.facebook.com/v20.0';
+const GRAPH_BASE = 'https://graph.facebook.com/v25.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -52,7 +52,7 @@ async function getAd(token: string, adId: string) {
 
 async function getCreativeDetails(token: string, creativeId: string) {
   const url = new URL(`${GRAPH_BASE}/${creativeId}`);
-  url.searchParams.set('fields', 'id,name,thumbnail_url,image_url,video_id,object_story_spec,asset_feed_spec,image_hash');
+  url.searchParams.set('fields', 'id,name,thumbnail_url,image_url,video_id,object_story_spec,asset_feed_spec,image_hash,degrees_of_freedom_spec');
   url.searchParams.set('access_token', token);
   const data = await fetch(url.toString()).then(r => r.json());
   throwIfMetaError('getCreativeDetails', data);
@@ -135,12 +135,21 @@ async function uploadVideo(token: string, adAccountId: string, fileBytes: Uint8A
   return { id: video_id };
 }
 
-async function createCreative(token: string, adAccountId: string, name: string, objectStorySpec: Record<string, unknown>) {
+async function createCreative(
+  token: string,
+  adAccountId: string,
+  name: string,
+  objectStorySpec: Record<string, unknown>,
+  degreesOfFreedomSpec?: Record<string, unknown> | null,
+) {
   const accountId = adAccountId.replace(/^act_/, '');
   const body = new URLSearchParams();
   body.set('access_token', token);
   body.set('name', name);
   body.set('object_story_spec', JSON.stringify(objectStorySpec));
+  if (degreesOfFreedomSpec && Object.keys(degreesOfFreedomSpec).length > 0) {
+    body.set('degrees_of_freedom_spec', JSON.stringify(degreesOfFreedomSpec));
+  }
   const data = await fetch(`${GRAPH_BASE}/act_${accountId}/adcreatives`, {
     method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString(),
   }).then(r => r.json());
@@ -330,7 +339,8 @@ serve(async (req) => {
 
         // Step 4: Save creative
         controller.enqueue(encode({ type: 'step', step: 4, label: 'Salvando novo criativo na Meta...' }));
-        const newCreative = await createCreative(accessToken, adAccountId, `${newAdName} - Creative`, objectStorySpec);
+        const degreesOfFreedomSpec = creative.degrees_of_freedom_spec ?? null;
+        const newCreative = await createCreative(accessToken, adAccountId, `${newAdName} - Creative`, objectStorySpec, degreesOfFreedomSpec);
 
         // Step 5: Publish ad
         controller.enqueue(encode({ type: 'step', step: 5, label: 'Publicando novo anúncio (Pausado)...' }));

@@ -10,7 +10,6 @@ import { useCreativeIntelligence } from '@/hooks/useCreativeIntelligence';
 import type { AdCreative } from '@/hooks/useCreativeIntelligence';
 import CreativeAnalyzePanel from '@/components/creative/CreativeAnalyzePanel';
 import CreativePreview from '@/components/creative/CreativePreview';
-import { DuplicateAdModal } from '@/components/creative/DuplicateAdModal';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: React.ComponentType<any> }> = {
   Winner: { label: 'Winner', color: 'text-emerald-700', bgColor: 'bg-emerald-50 border-emerald-200', icon: Trophy },
@@ -32,7 +31,6 @@ export default function CreativeIntelligencePage() {
 
   const [analyzeAd, setAnalyzeAd] = useState<AdCreative | null>(null);
   const [viewAd, setViewAd] = useState<AdCreative | null>(null);
-  const [duplicateAd, setDuplicateAd] = useState<AdCreative | null>(null);
   const [search, setSearch] = useState('');
 
   const summaryCards = [
@@ -139,14 +137,12 @@ export default function CreativeIntelligencePage() {
             .filter(ad => !search.trim() || ad.ad_name.toLowerCase().includes(search.trim().toLowerCase()))
             .map(ad => (
               <CreativeCard key={`${ad.ad_id}_${ad.adset_id}`} ad={ad}
-                onAnalyze={() => setAnalyzeAd(ad)} onView={() => setViewAd(ad)} onDuplicate={() => setDuplicateAd(ad)} />
+                onAnalyze={() => setAnalyzeAd(ad)} onView={() => setViewAd(ad)} />
             ))}
         </div>
       )}
 
       {analyzeAd && <CreativeAnalyzePanel ad={analyzeAd} onClose={() => setAnalyzeAd(null)} />}
-      <DuplicateAdModal ad={duplicateAd} open={!!duplicateAd} onOpenChange={(open) => { if (!open) setDuplicateAd(null); }} />
-
       <Dialog open={!!viewAd} onOpenChange={() => setViewAd(null)}>
         <DialogContent className="max-w-[900px] p-0 overflow-hidden" aria-describedby={undefined}>
           <DialogTitle className="sr-only">{viewAd?.ad_name ?? 'Preview'}</DialogTitle>
@@ -201,7 +197,7 @@ function getMetricRows(ad: AdCreative): [string, string][] {
   return rows;
 }
 
-function CreativeCard({ ad, onAnalyze, onView, onDuplicate }: { ad: AdCreative; onAnalyze: () => void; onView: () => void; onDuplicate: () => void }) {
+function CreativeCard({ ad, onAnalyze, onView }: { ad: AdCreative; onAnalyze: () => void; onView: () => void }) {
   const config = STATUS_CONFIG[ad.status] || STATUS_CONFIG.Learning;
   const StatusIcon = config.icon;
   const modeConf = ad.conversion_mode ? MODE_CONFIG[ad.conversion_mode] : null;
@@ -261,7 +257,7 @@ function CreativeCard({ ad, onAnalyze, onView, onDuplicate }: { ad: AdCreative; 
         <div className="flex gap-2 pt-1">
           <Button variant="outline" size="sm" className="flex-1 text-xs h-7" onClick={onView}>Ver</Button>
           <Button variant="outline" size="sm" className="flex-1 text-xs h-7" onClick={onAnalyze}>Analisar</Button>
-          <Button variant="outline" size="sm" className="flex-1 text-xs h-7" onClick={onDuplicate}>Duplicar</Button>
+          {/* Duplicar movido para tela Campanhas */}
         </div>
       </CardContent>
     </Card>

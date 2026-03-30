@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
-import { Layers, Settings, LayoutDashboard, Menu, ChevronDown, Check, Loader2, Building2, LogOut, Film, Leaf, Briefcase } from 'lucide-react';
+import { Layers, Settings, LayoutDashboard, Menu, ChevronDown, Check, Loader2, Building2, LogOut, Film, Leaf, Briefcase, Megaphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAccountContext } from '@/contexts/AccountContext';
 import { useClientContext } from '@/contexts/ClientContext';
 import { useAuth, canAccess } from '@/contexts/AuthContext';
 
-export type Page = 'dashboard' | 'creative' | 'settings' | 'content' | 'content_intelligence' | 'organic_intelligence';
+export type Page = 'dashboard' | 'creative' | 'settings' | 'content' | 'content_intelligence' | 'organic_intelligence' | 'campaigns';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -15,6 +15,7 @@ interface LayoutProps {
 
 const NAV_ITEMS: { id: Page; label: string; icon: React.ComponentType<any> }[] = [
   { id: 'dashboard', label: 'Dashboard DCM', icon: LayoutDashboard },
+  { id: 'campaigns', label: 'Campanhas', icon: Megaphone },
   { id: 'creative', label: 'Creative Intelligence', icon: Layers },
   { id: 'content_intelligence', label: 'Content Intel. — Paid', icon: Film },
   { id: 'organic_intelligence', label: 'Content Intel. — Organic', icon: Leaf },

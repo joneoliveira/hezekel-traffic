@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { Loader2, Upload, X, CheckCircle2, ImageIcon, Circle, Plus, Minus } from 'lucide-react';
+import { Loader2, Upload, X, CheckCircle2, ImageIcon, Circle, Film } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,7 +9,7 @@ import type { AdCreative } from '@/hooks/useCreativeIntelligence';
 import { useAccountContext } from '@/contexts/AccountContext';
 
 const STEPS = [
-  'Fazendo upload da nova mídia...',
+  'Fazendo upload da mídia...',
   'Lendo dados do anúncio original...',
   'Montando novo criativo...',
   'Salvando novo criativo na Meta...',
@@ -23,6 +23,11 @@ type StepEvent =
   | { type: 'error'; message: string; metaError?: { error_user_msg?: string; error_user_title?: string } };
 
 type CreatedAd = { adId: string; name: string };
+
+interface MediaItem {
+  file: File;
+  previewUrl: string;
+}
 
 function ProgressStepper({ currentStep, stepLabels }: { currentStep: number; stepLabels: string[] }) {
   return (
@@ -59,9 +64,7 @@ interface Props {
 
 export function DuplicateAdModal({ ad, open, onOpenChange, onSuccess }: Props) {
   const [customName, setCustomName] = useState('');
-  const [quantity, setQuantity] = useState(1);
-  const [mediaFile, setMediaFile] = useState<File | null>(null);
-  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [currentCopy, setCurrentCopy] = useState(0);
@@ -75,25 +78,30 @@ export function DuplicateAdModal({ ad, open, onOpenChange, onSuccess }: Props) {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
   const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
-  function handleFileSelect(file: File) {
-    setMediaFile(file);
-    setMediaPreview(URL.createObjectURL(file));
+  const totalCopies = mediaItems.length || 1;
+
+  function addFiles(files: FileList | File[]) {
+    const newItems: MediaItem[] = Array.from(files).map(file => ({
+      file,
+      previewUrl: URL.createObjectURL(file),
+    }));
+    setMediaItems(prev => [...prev, ...newItems]);
+  }
+
+  function removeMedia(index: number) {
+    setMediaItems(prev => {
+      URL.revokeObjectURL(prev[index].previewUrl);
+      return prev.filter((_, i) => i !== index);
+    });
   }
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) handleFileSelect(file);
+    if (e.dataTransfer.files?.length) addFiles(e.dataTransfer.files);
   }, []);
 
-  function clearMedia() {
-    setMediaFile(null);
-    setMediaPreview(null);
-    if (inputRef.current) inputRef.current.value = '';
-  }
-
-  async function runOneDuplicate(adId: string, name?: string): Promise<CreatedAd> {
+  async function runOneDuplicate(adId: string, mediaFile: File | null, name?: string): Promise<CreatedAd> {
     const formData = new FormData();
     if (name) formData.append('name', name);
     if (mediaFile) formData.append('media', mediaFile);
@@ -149,14 +157,25 @@ export function DuplicateAdModal({ ad, open, onOpenChange, onSuccess }: Props) {
     const results: CreatedAd[] = [];
 
     try {
-      for (let i = 1; i <= quantity; i++) {
-        setCurrentCopy(i);
+      if (mediaItems.length === 0) {
+        // No media: single copy
+        setCurrentCopy(1);
         setCurrentStep(1);
-        const name = customName.trim() && quantity === 1 ? customName.trim() : undefined;
-        const created = await runOneDuplicate(ad.ad_id, name);
+        const name = customName.trim() || undefined;
+        const created = await runOneDuplicate(ad.ad_id, null, name);
         results.push(created);
         setCreatedAds([...results]);
         onSuccess?.(created.adId, created.name);
+      } else {
+        // One copy per media file
+        for (let i = 0; i < mediaItems.length; i++) {
+          setCurrentCopy(i + 1);
+          setCurrentStep(1);
+          const created = await runOneDuplicate(ad.ad_id, mediaItems[i].file);
+          results.push(created);
+          setCreatedAds([...results]);
+          onSuccess?.(created.adId, created.name);
+        }
       }
       setIsDone(true);
     } catch (err: any) {
@@ -170,8 +189,8 @@ export function DuplicateAdModal({ ad, open, onOpenChange, onSuccess }: Props) {
   function handleClose(nextOpen: boolean) {
     if (!nextOpen) {
       setCustomName('');
-      setQuantity(1);
-      clearMedia();
+      mediaItems.forEach(m => URL.revokeObjectURL(m.previewUrl));
+      setMediaItems([]);
       setIsDone(false);
       setIsRunning(false);
       setCurrentCopy(0);
@@ -183,7 +202,6 @@ export function DuplicateAdModal({ ad, open, onOpenChange, onSuccess }: Props) {
   }
 
   const sourceThumbnail = ad?.image_url || ad?.thumbnail_url || ad?.media_best_url || null;
-  const showStepper = isRunning || (isDone && quantity === 1);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -194,13 +212,13 @@ export function DuplicateAdModal({ ad, open, onOpenChange, onSuccess }: Props) {
 
         {isDone ? (
           <div className="flex flex-col gap-5">
-            {quantity === 1 ? (
+            {totalCopies === 1 ? (
               <ProgressStepper currentStep={STEPS.length + 1} stepLabels={[...STEPS]} />
             ) : null}
             <div className="flex flex-col items-center gap-3 pt-2 text-center border-t border-border">
               <CheckCircle2 size={36} className="text-green-600" />
               <p className="font-semibold">
-                {quantity === 1 ? 'Anúncio duplicado com sucesso!' : `${quantity} anúncios criados com sucesso!`}
+                {totalCopies === 1 ? 'Anúncio duplicado com sucesso!' : `${totalCopies} anúncios criados com sucesso!`}
               </p>
             </div>
             {createdAds.length > 0 && (
@@ -218,9 +236,9 @@ export function DuplicateAdModal({ ad, open, onOpenChange, onSuccess }: Props) {
           </div>
         ) : isRunning ? (
           <div className="flex flex-col gap-4 py-2">
-            {quantity > 1 && (
+            {totalCopies > 1 && (
               <p className="text-sm font-medium text-muted-foreground">
-                Criando cópia {currentCopy} de {quantity}...
+                Criando cópia {currentCopy} de {totalCopies}...
               </p>
             )}
             <ProgressStepper currentStep={currentStep} stepLabels={[...STEPS]} />
@@ -252,25 +270,78 @@ export function DuplicateAdModal({ ad, open, onOpenChange, onSuccess }: Props) {
               </div>
             )}
 
+            {/* Media list */}
             <div className="flex flex-col gap-2">
-              <Label>Quantidade de cópias</Label>
-              <div className="flex items-center gap-2">
-                <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0"
-                  onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={quantity <= 1}>
-                  <Minus size={14} />
-                </Button>
-                <span className="w-10 text-center font-semibold tabular-nums">{quantity}</span>
-                <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0"
-                  onClick={() => setQuantity(q => Math.min(10, q + 1))} disabled={quantity >= 10}>
-                  <Plus size={14} />
-                </Button>
-                <span className="text-xs text-muted-foreground ml-1">
-                  {quantity > 1 ? 'Nomes gerados automaticamente (_VAR01, _VAR02...)' : ''}
-                </span>
+              <div className="flex items-center justify-between">
+                <Label>Mídias</Label>
+                {mediaItems.length > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    {mediaItems.length} {mediaItems.length === 1 ? 'arquivo' : 'arquivos'} → {mediaItems.length} {mediaItems.length === 1 ? 'cópia' : 'cópias'}
+                  </span>
+                )}
               </div>
+
+              {mediaItems.length > 0 && (
+                <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto pr-0.5">
+                  {mediaItems.map((item, i) => {
+                    const isVideo = item.file.type.startsWith('video/');
+                    return (
+                      <div key={i} className="flex items-center gap-2 p-2 rounded-md border border-border bg-muted/50">
+                        <div className="w-9 h-9 rounded overflow-hidden border border-border bg-background flex items-center justify-center shrink-0">
+                          {isVideo
+                            ? <Film size={14} className="text-muted-foreground" />
+                            : <img src={item.previewUrl} alt="" className="w-full h-full object-cover" />}
+                        </div>
+                        <span className="text-xs truncate flex-1 text-muted-foreground">{item.file.name}</span>
+                        <button
+                          onClick={() => removeMedia(i)}
+                          className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          <X size={13} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Drop zone */}
+              <div
+                role="button" tabIndex={0}
+                className={cn(
+                  'border-2 border-dashed rounded-md p-4 flex flex-col items-center gap-1.5 cursor-pointer transition-colors',
+                  isDragging ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground'
+                )}
+                onClick={() => inputRef.current?.click()}
+                onKeyDown={e => e.key === 'Enter' && inputRef.current?.click()}
+                onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleDrop}
+              >
+                <Upload size={18} className="text-muted-foreground" />
+                <p className="text-sm text-muted-foreground text-center">
+                  {mediaItems.length === 0
+                    ? <>Arraste ou <span className="text-foreground font-medium">clique para selecionar</span></>
+                    : <span className="text-foreground font-medium">Adicionar mais arquivos</span>}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {mediaItems.length === 0
+                    ? 'Selecione 1 ou mais imagens/vídeos. Sem mídia = 1 cópia sem troca.'
+                    : 'Imagens ou vídeos'}
+                </p>
+              </div>
+              <input
+                ref={inputRef}
+                type="file"
+                accept="image/*,video/*"
+                multiple
+                className="sr-only"
+                onChange={e => { if (e.target.files?.length) { addFiles(e.target.files); e.target.value = ''; } }}
+              />
             </div>
 
-            {quantity === 1 && (
+            {/* Custom name — only when no media or single file */}
+            {mediaItems.length <= 1 && (
               <div className="flex flex-col gap-2">
                 <Label htmlFor="dup-name">Nome do novo anúncio</Label>
                 <Input
@@ -282,44 +353,6 @@ export function DuplicateAdModal({ ad, open, onOpenChange, onSuccess }: Props) {
               </div>
             )}
 
-            <div className="flex flex-col gap-2">
-              <Label>Nova mídia (opcional)</Label>
-              {mediaPreview ? (
-                <div className="relative rounded-md border border-border overflow-hidden bg-muted">
-                  {mediaFile?.type.startsWith('video/')
-                    ? <video src={mediaPreview} className="w-full max-h-40 object-contain" controls />
-                    : <img src={mediaPreview} alt="Preview" className="w-full max-h-40 object-contain" />}
-                  <Button type="button" variant="ghost" size="icon"
-                    className="absolute top-1 right-1 h-7 w-7 bg-background/80 hover:bg-background"
-                    onClick={clearMedia}>
-                    <X size={12} />
-                  </Button>
-                  <p className="text-xs text-muted-foreground px-3 pb-2 truncate">{mediaFile?.name}</p>
-                </div>
-              ) : (
-                <div
-                  role="button" tabIndex={0}
-                  className={cn(
-                    'border-2 border-dashed rounded-md p-6 flex flex-col items-center gap-2 cursor-pointer transition-colors',
-                    isDragging ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground'
-                  )}
-                  onClick={() => inputRef.current?.click()}
-                  onKeyDown={e => e.key === 'Enter' && inputRef.current?.click()}
-                  onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
-                  onDragLeave={() => setIsDragging(false)}
-                  onDrop={handleDrop}
-                >
-                  <Upload size={20} className="text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground text-center">
-                    Arraste ou <span className="text-foreground font-medium">clique para enviar</span>
-                  </p>
-                  <p className="text-xs text-muted-foreground">Imagens ou vídeos</p>
-                </div>
-              )}
-              <input ref={inputRef} type="file" accept="image/*,video/*" className="sr-only"
-                onChange={e => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }} />
-            </div>
-
             {errorMsg && (
               <div className="p-3 rounded-md bg-red-50 border border-red-200 text-red-800 text-sm whitespace-pre-wrap">{errorMsg}</div>
             )}
@@ -328,7 +361,9 @@ export function DuplicateAdModal({ ad, open, onOpenChange, onSuccess }: Props) {
               <Button variant="outline" onClick={() => handleClose(false)}>Cancelar</Button>
               <Button onClick={handleDuplicate} disabled={isRunning}>
                 {isRunning && <Loader2 size={14} className="animate-spin mr-2" />}
-                {quantity > 1 ? `Criar ${quantity} cópias` : 'Duplicar'}
+                {mediaItems.length > 1
+                  ? `Criar ${mediaItems.length} cópias`
+                  : 'Duplicar'}
               </Button>
             </div>
           </div>
