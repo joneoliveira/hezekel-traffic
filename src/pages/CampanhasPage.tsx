@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { supabase } from '@/integrations/supabase/client';
 import { useAccountContext } from '@/contexts/AccountContext';
 import { DuplicateAdModal } from '@/components/creative/DuplicateAdModal';
 import type { AdCreative } from '@/hooks/useCreativeIntelligence';
@@ -36,46 +35,51 @@ function useAds() {
   const [selectedCampaign, setSelectedCampaign] = useState('');
   const [selectedAdset, setSelectedAdset] = useState('');
 
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+
   const fetchAds = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      let query = supabase
-        .from('meta_ad_creatives')
-        .select('ad_id,ad_name,campaign_id,campaign_name,adset_id,adset_name,creative_type,image_url,thumbnail_url,media_best_url,video_thumbnail_url')
-        .order('campaign_name', { ascending: true })
-        .order('adset_name', { ascending: true })
-        .order('ad_name', { ascending: true });
+      // Use the existing edge function (service_role bypasses RLS)
+      const params = new URLSearchParams({ date_preset: 'last_30d' });
+      if (activeAccount?.ad_account_id) params.set('account_id', activeAccount.ad_account_id);
+      if (selectedCampaign) params.set('campaign_id', selectedCampaign);
+      if (selectedAdset) params.set('adset_id', selectedAdset);
 
-      if (activeAccount?.ad_account_id) {
-        query = query.eq('account_id', activeAccount.ad_account_id);
-      }
-      if (selectedCampaign) query = query.eq('campaign_id', selectedCampaign);
-      if (selectedAdset) query = query.eq('adset_id', selectedAdset);
+      const res = await fetch(`${supabaseUrl}/functions/v1/creative-intelligence-feed?${params}`, {
+        headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
+      });
+      const result = await res.json();
+      if (result.error) throw new Error(result.error);
 
-      const { data, error: err } = await query.limit(500);
-      if (err) throw err;
+      const rows: AdRow[] = (result.ads ?? []).map((ad: any) => ({
+        ad_id: ad.ad_id,
+        ad_name: ad.ad_name,
+        campaign_id: ad.campaign_id,
+        campaign_name: ad.campaign_name,
+        adset_id: ad.adset_id,
+        adset_name: ad.adset_name,
+        creative_type: ad.creative_type,
+        image_url: ad.image_url,
+        thumbnail_url: ad.thumbnail_url,
+        media_best_url: ad.media_best_url,
+        video_thumbnail_url: ad.video_thumbnail_url,
+      }));
 
-      const rows = (data ?? []) as AdRow[];
       setAds(rows);
 
-      // Build filter options from full unfiltered data if no campaign filter
       if (!selectedCampaign && !selectedAdset) {
-        const campMap = new Map<string, string>();
-        const adsetMap = new Map<string, string>();
-        rows.forEach(r => {
-          campMap.set(r.campaign_id, r.campaign_name);
-          adsetMap.set(r.adset_id, r.adset_name);
-        });
-        setCampaigns(Array.from(campMap.entries()).map(([id, name]) => ({ id, name })));
-        setAdsets(Array.from(adsetMap.entries()).map(([id, name]) => ({ id, name })));
+        setCampaigns(result.campaigns ?? []);
+        setAdsets(result.adsets ?? []);
       }
     } catch (err: any) {
       setError(err.message ?? 'Erro ao carregar anúncios');
     } finally {
       setLoading(false);
     }
-  }, [activeAccount?.ad_account_id, selectedCampaign, selectedAdset]);
+  }, [activeAccount?.ad_account_id, selectedCampaign, selectedAdset, supabaseUrl, anonKey]);
 
   useEffect(() => {
     setSelectedCampaign('');
