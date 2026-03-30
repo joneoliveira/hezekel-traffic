@@ -333,9 +333,15 @@ serve(async (req) => {
           }
         }
 
-        const allAds = await listAds(accessToken, adAccountId);
-        const namesInAdset = allAds.filter((a: any) => a.adset?.id === adsetId).map((a: any) => a.name);
-        const newAdName = customName?.trim() ? customName.trim() : generateVariantName(sourceAd.name, namesInAdset);
+        // Only call listAds when no custom name is provided (avoids rate limiting on bulk uploads)
+        let newAdName: string;
+        if (customName?.trim()) {
+          newAdName = customName.trim();
+        } else {
+          const allAds = await listAds(accessToken, adAccountId);
+          const namesInAdset = allAds.filter((a: any) => a.adset?.id === adsetId).map((a: any) => a.name);
+          newAdName = generateVariantName(sourceAd.name, namesInAdset);
+        }
 
         // Step 4: Save creative
         controller.enqueue(encode({ type: 'step', step: 4, label: 'Salvando novo criativo na Meta...' }));
