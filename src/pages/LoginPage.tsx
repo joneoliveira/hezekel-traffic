@@ -27,7 +27,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center pb-2">
           <img src="/logo.svg" alt="Hezekel Traffic" className="h-16 w-auto mx-auto mb-2" />
-          <CardTitle className="text-xl">Central de Comando</CardTitle>
+          <CardTitle className="text-xl">Hezekel Traffic</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">Faça login para continuar</p>
         </CardHeader>
         <CardContent>
