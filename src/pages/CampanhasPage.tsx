@@ -15,6 +15,7 @@ interface AdRow {
   campaign_name: string;
   adset_id: string;
   adset_name: string;
+  ad_status: string | null;
   creative_type: string | null;
   image_url: string | null;
   thumbnail_url: string | null;
@@ -57,6 +58,7 @@ function useAds() {
       const rows: AdRow[] = (result.ads ?? []).map((ad: any) => ({
         ad_id: ad.ad_id,
         ad_name: ad.ad_name,
+        ad_status: ad.ad_status ?? null,
         campaign_id: ad.campaign_id,
         campaign_name: ad.campaign_name,
         adset_id: ad.adset_id,
@@ -122,11 +124,15 @@ export default function CampanhasPage() {
   } = useAds();
 
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [duplicateAd, setDuplicateAd] = useState<AdCreative | null>(null);
 
-  const filtered = ads.filter(ad =>
-    !search.trim() || ad.ad_name.toLowerCase().includes(search.trim().toLowerCase())
-  );
+  const filtered = ads.filter(ad => {
+    if (search.trim() && !ad.ad_name.toLowerCase().includes(search.trim().toLowerCase())) return false;
+    if (statusFilter === 'active' && ad.ad_status !== 'ACTIVE') return false;
+    if (statusFilter === 'inactive' && ad.ad_status === 'ACTIVE') return false;
+    return true;
+  });
 
   function openDuplicate(ad: AdRow) {
     // Cast to AdCreative (only the fields used by DuplicateAdModal are needed)
@@ -178,9 +184,18 @@ export default function CampanhasPage() {
           </SelectContent>
         </Select>
 
-        {(selectedCampaign || selectedAdset || search) && (
+        <Select value={statusFilter || '__all__'} onValueChange={v => setStatusFilter(v === '__all__' ? '' : v)}>
+          <SelectTrigger className="w-[150px]"><SelectValue placeholder="Todos" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">Todos</SelectItem>
+            <SelectItem value="active">Ativos</SelectItem>
+            <SelectItem value="inactive">Inativos</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {(selectedCampaign || selectedAdset || search || statusFilter) && (
           <Button variant="ghost" size="sm" className="text-muted-foreground h-9"
-            onClick={() => { setSelectedCampaign(''); setSelectedAdset(''); setSearch(''); }}>
+            onClick={() => { setSelectedCampaign(''); setSelectedAdset(''); setSearch(''); setStatusFilter(''); }}>
             <X className="w-3.5 h-3.5 mr-1" /> Limpar filtros
           </Button>
         )}
@@ -204,7 +219,7 @@ export default function CampanhasPage() {
         </div>
       ) : filtered.length === 0 ? (
         <Card><CardContent className="p-8 text-center text-muted-foreground">
-          {search || selectedCampaign || selectedAdset
+          {search || selectedCampaign || selectedAdset || statusFilter
             ? 'Nenhum anúncio encontrado para os filtros selecionados.'
             : 'Nenhum anúncio sincronizado. Acesse Creative Intelligence e faça o sync.'}
         </CardContent></Card>
@@ -217,7 +232,18 @@ export default function CampanhasPage() {
               </div>
               <CardContent className="p-3 space-y-2">
                 <div>
-                  <p className="font-medium text-sm truncate" title={ad.ad_name}>{ad.ad_name}</p>
+                  <div className="flex items-start justify-between gap-1 mb-0.5">
+                    <p className="font-medium text-sm truncate flex-1" title={ad.ad_name}>{ad.ad_name}</p>
+                    {ad.ad_status && (
+                      <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded border ${
+                        ad.ad_status === 'ACTIVE'
+                          ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                          : 'text-muted-foreground bg-muted border-border'
+                      }`}>
+                        {ad.ad_status === 'ACTIVE' ? 'Ativo' : 'Inativo'}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-primary/80 truncate"><span className="font-medium">Conjunto:</span> {ad.adset_name}</p>
                   <p className="text-xs text-muted-foreground truncate">{ad.campaign_name}</p>
                 </div>

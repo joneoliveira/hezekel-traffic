@@ -130,7 +130,7 @@ serve(async (req) => {
 
       const batchRequests = batch.map((adId: string) => ({
         method: 'GET',
-        relative_url: `${adId}?fields=name,adset_id,campaign_id,creative{id,image_url,thumbnail_url,video_id}`,
+        relative_url: `${adId}?fields=name,effective_status,adset_id,campaign_id,creative{id,image_url,thumbnail_url,video_id}`,
       }));
 
       const batchRes = await fetch(`${BASE}?access_token=${accessToken}`, {
@@ -162,6 +162,7 @@ serve(async (req) => {
           campaign_id: adData.campaign_id || info.campaign_id || '',
           adset_name: info.adset_name || '',
           campaign_name: info.campaign_name || '',
+          ad_status: adData.effective_status || null,
           creative_type: creative.video_id ? 'video' : (creative.image_url ? 'image' : 'unknown'),
           image_url: creative.image_url || null,
           thumbnail_url: creative.thumbnail_url || null,
