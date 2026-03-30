@@ -119,10 +119,52 @@ serve(async (req) => {
       synced_insights_rows = insightRows.length;
     }
 
-    // ── Fetch creatives (Batch API) ───────────────────────────────────────────
+    // ── Fetch campaign + adset statuses (Batch API) ──────────────────────────
     const adIdsArr = Array.from(adIds);
     let creatives_upserted = 0;
     let videos_resolved = 0;
+
+    const uniqueAdsetIds = Array.from(new Set(Array.from(adInfoMap.values()).map((v: any) => v.adset_id).filter(Boolean)));
+    const uniqueCampaignIds = Array.from(new Set(Array.from(adInfoMap.values()).map((v: any) => v.campaign_id).filter(Boolean)));
+
+    const adsetStatusMap = new Map<string, string>();
+    const campaignStatusMap = new Map<string, string>();
+
+    // Batch fetch adset statuses
+    for (let i = 0; i < uniqueAdsetIds.length; i += 50) {
+      const batch = uniqueAdsetIds.slice(i, i + 50).map((id: string) => ({
+        method: 'GET', relative_url: `${id}?fields=effective_status`,
+      }));
+      const res = await fetch(`${BASE}?access_token=${accessToken}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ batch }),
+      });
+      const data = await res.json();
+      for (let j = 0; j < batch.length; j++) {
+        const item = data[j];
+        if (!item || item.code !== 200) continue;
+        const parsed = JSON.parse(item.body);
+        adsetStatusMap.set(uniqueAdsetIds[i + j], parsed.effective_status || null);
+      }
+    }
+
+    // Batch fetch campaign statuses
+    for (let i = 0; i < uniqueCampaignIds.length; i += 50) {
+      const batch = uniqueCampaignIds.slice(i, i + 50).map((id: string) => ({
+        method: 'GET', relative_url: `${id}?fields=effective_status`,
+      }));
+      const res = await fetch(`${BASE}?access_token=${accessToken}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ batch }),
+      });
+      const data = await res.json();
+      for (let j = 0; j < batch.length; j++) {
+        const item = data[j];
+        if (!item || item.code !== 200) continue;
+        const parsed = JSON.parse(item.body);
+        campaignStatusMap.set(uniqueCampaignIds[i + j], parsed.effective_status || null);
+      }
+    }
 
     // Process in batches of 50
     for (let batchStart = 0; batchStart < adIdsArr.length; batchStart += 50) {
@@ -163,6 +205,8 @@ serve(async (req) => {
           adset_name: info.adset_name || '',
           campaign_name: info.campaign_name || '',
           ad_status: adData.effective_status || null,
+          adset_status: adsetStatusMap.get(adData.adset_id || info.adset_id || '') || null,
+          campaign_status: campaignStatusMap.get(adData.campaign_id || info.campaign_id || '') || null,
           creative_type: creative.video_id ? 'video' : (creative.image_url ? 'image' : 'unknown'),
           image_url: creative.image_url || null,
           thumbnail_url: creative.thumbnail_url || null,

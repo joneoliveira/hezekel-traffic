@@ -16,6 +16,8 @@ interface AdRow {
   adset_id: string;
   adset_name: string;
   ad_status: string | null;
+  adset_status: string | null;
+  campaign_status: string | null;
   creative_type: string | null;
   image_url: string | null;
   thumbnail_url: string | null;
@@ -59,6 +61,8 @@ function useAds() {
         ad_id: ad.ad_id,
         ad_name: ad.ad_name,
         ad_status: ad.ad_status ?? null,
+        adset_status: ad.adset_status ?? null,
+        campaign_status: ad.campaign_status ?? null,
         campaign_id: ad.campaign_id,
         campaign_name: ad.campaign_name,
         adset_id: ad.adset_id,
@@ -124,13 +128,16 @@ export default function CampanhasPage() {
   } = useAds();
 
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('active');
   const [duplicateAd, setDuplicateAd] = useState<AdCreative | null>(null);
+
+  const isFullyActive = (ad: AdRow) =>
+    ad.campaign_status === 'ACTIVE' && ad.adset_status === 'ACTIVE' && ad.ad_status === 'ACTIVE';
 
   const filtered = ads.filter(ad => {
     if (search.trim() && !ad.ad_name.toLowerCase().includes(search.trim().toLowerCase())) return false;
-    if (statusFilter === 'active' && ad.ad_status !== 'ACTIVE') return false;
-    if (statusFilter === 'inactive' && ad.ad_status === 'ACTIVE') return false;
+    if (statusFilter === 'active' && !isFullyActive(ad)) return false;
+    if (statusFilter === 'inactive' && isFullyActive(ad)) return false;
     return true;
   });
 
@@ -234,13 +241,13 @@ export default function CampanhasPage() {
                 <div>
                   <div className="flex items-start justify-between gap-1 mb-0.5">
                     <p className="font-medium text-sm truncate flex-1" title={ad.ad_name}>{ad.ad_name}</p>
-                    {ad.ad_status && (
+                    {(ad.campaign_status || ad.adset_status || ad.ad_status) && (
                       <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded border ${
-                        ad.ad_status === 'ACTIVE'
+                        isFullyActive(ad)
                           ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
                           : 'text-muted-foreground bg-muted border-border'
                       }`}>
-                        {ad.ad_status === 'ACTIVE' ? 'Ativo' : 'Inativo'}
+                        {isFullyActive(ad) ? 'Ativo' : 'Inativo'}
                       </span>
                     )}
                   </div>

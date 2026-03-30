@@ -109,6 +109,8 @@ serve(async (req) => {
         ad_id: adId,
         ad_name: creative.ad_name || adId,
         ad_status: creative.ad_status || null,
+        adset_status: creative.adset_status || null,
+        campaign_status: creative.campaign_status || null,
         campaign_id: agg.campaign_id,
         campaign_name: creative.campaign_name || '',
         adset_id: agg.adset_id,
