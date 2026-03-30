@@ -167,11 +167,13 @@ export function DuplicateAdModal({ ad, open, onOpenChange, onSuccess }: Props) {
         setCreatedAds([...results]);
         onSuccess?.(created.adId, created.name);
       } else {
-        // One copy per media file
+        // One copy per media file — use filename (without extension) as ad name
         for (let i = 0; i < mediaItems.length; i++) {
           setCurrentCopy(i + 1);
           setCurrentStep(1);
-          const created = await runOneDuplicate(ad.ad_id, mediaItems[i].file);
+          const file = mediaItems[i].file;
+          const nameFromFile = file.name.replace(/\.[^/.]+$/, '');
+          const created = await runOneDuplicate(ad.ad_id, file, nameFromFile);
           results.push(created);
           setCreatedAds([...results]);
           onSuccess?.(created.adId, created.name);

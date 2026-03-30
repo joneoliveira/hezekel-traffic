@@ -339,7 +339,21 @@ serve(async (req) => {
 
         // Step 4: Save creative
         controller.enqueue(encode({ type: 'step', step: 4, label: 'Salvando novo criativo na Meta...' }));
-        const degreesOfFreedomSpec = creative.degrees_of_freedom_spec ?? null;
+
+        // Strip deprecated standard_enhancements from degrees_of_freedom_spec (deprecated in v22+)
+        let degreesOfFreedomSpec = creative.degrees_of_freedom_spec ?? null;
+        if (degreesOfFreedomSpec?.creative_features_spec?.standard_enhancements !== undefined) {
+          degreesOfFreedomSpec = {
+            ...degreesOfFreedomSpec,
+            creative_features_spec: Object.fromEntries(
+              Object.entries(degreesOfFreedomSpec.creative_features_spec).filter(([k]) => k !== 'standard_enhancements')
+            ),
+          };
+          if (Object.keys(degreesOfFreedomSpec.creative_features_spec).length === 0) {
+            degreesOfFreedomSpec = null;
+          }
+        }
+
         const newCreative = await createCreative(accessToken, adAccountId, `${newAdName} - Creative`, objectStorySpec, degreesOfFreedomSpec);
 
         // Step 5: Publish ad
