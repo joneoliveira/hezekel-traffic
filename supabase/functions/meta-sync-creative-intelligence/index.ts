@@ -172,7 +172,7 @@ serve(async (req) => {
 
       const batchRequests = batch.map((adId: string) => ({
         method: 'GET',
-        relative_url: `${adId}?fields=name,effective_status,adset_id,campaign_id,creative{id,image_url,thumbnail_url,video_id}`,
+        relative_url: `${adId}?fields=name,effective_status,adset_id,campaign_id,creative{id,image_url,thumbnail_url,video_id,object_story_spec,asset_feed_spec}`,
       }));
 
       const batchRes = await fetch(`${BASE}?access_token=${accessToken}`, {
@@ -196,6 +196,20 @@ serve(async (req) => {
 
         if (creative.video_id) videoIds.push({ adId, videoId: creative.video_id });
 
+        // Extract destination URL from object_story_spec or asset_feed_spec
+        const spec = creative.object_story_spec || {};
+        const assetFeed = creative.asset_feed_spec || {};
+        let destinationUrl: string | null = null;
+        if (spec.link_data?.call_to_action?.value?.link) {
+          destinationUrl = spec.link_data.call_to_action.value.link;
+        } else if (spec.link_data?.link) {
+          destinationUrl = spec.link_data.link;
+        } else if (spec.video_data?.call_to_action?.value?.link) {
+          destinationUrl = spec.video_data.call_to_action.value.link;
+        } else if (assetFeed.link_urls?.[0]?.website_url) {
+          destinationUrl = assetFeed.link_urls[0].website_url;
+        }
+
         creativeRows.push({
           account_id: accountTag,
           ad_id: adId,
@@ -207,6 +221,7 @@ serve(async (req) => {
           ad_status: adData.effective_status || null,
           adset_status: adsetStatusMap.get(adData.adset_id || info.adset_id || '') || null,
           campaign_status: campaignStatusMap.get(adData.campaign_id || info.campaign_id || '') || null,
+          destination_url: destinationUrl,
           creative_type: creative.video_id ? 'video' : (creative.image_url ? 'image' : 'unknown'),
           image_url: creative.image_url || null,
           thumbnail_url: creative.thumbnail_url || null,
