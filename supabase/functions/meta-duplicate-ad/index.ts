@@ -325,11 +325,39 @@ serve(async (req) => {
             delete objectStorySpec.video_data.image_url;
           }
           if (uploadedVideoId) {
-            if (objectStorySpec.video_data) { objectStorySpec.video_data.video_id = uploadedVideoId; }
-            else { objectStorySpec.video_data = { video_id: uploadedVideoId }; }
+            // Replace or set video — remove link_data if switching from image to video
+            if (objectStorySpec.video_data) {
+              objectStorySpec.video_data.video_id = uploadedVideoId;
+            } else {
+              const ld = objectStorySpec.link_data as Obj | undefined;
+              const link = ld?.link || ld?.call_to_action?.value?.link || '';
+              const message = ld?.message || '';
+              const ctaType = ld?.call_to_action?.type || 'LEARN_MORE';
+              objectStorySpec.video_data = { video_id: uploadedVideoId, message, call_to_action: { type: ctaType, value: { link } } };
+              delete objectStorySpec.link_data;
+            }
           } else if (uploadedImageHash) {
-            if (objectStorySpec.link_data) { objectStorySpec.link_data.image_hash = uploadedImageHash; delete objectStorySpec.link_data.image_url; }
-            else { objectStorySpec.link_data = { image_hash: uploadedImageHash }; }
+            if (objectStorySpec.video_data) {
+              // Switching video → image: extract link/copy from video_data, remove video_data
+              const vd = objectStorySpec.video_data as Obj;
+              const link = vd.call_to_action?.value?.link || vd.link || '';
+              const message = vd.message || '';
+              const title = vd.title || vd.name || '';
+              const ctaType = vd.call_to_action?.type || 'LEARN_MORE';
+              objectStorySpec.link_data = {
+                image_hash: uploadedImageHash,
+                link,
+                message,
+                name: title,
+                call_to_action: { type: ctaType, value: { link } },
+              };
+              delete objectStorySpec.video_data;
+            } else if (objectStorySpec.link_data) {
+              objectStorySpec.link_data.image_hash = uploadedImageHash;
+              delete objectStorySpec.link_data.image_url;
+            } else {
+              objectStorySpec.link_data = { image_hash: uploadedImageHash };
+            }
           }
         }
 
