@@ -529,19 +529,21 @@ export default function AdminPage() {
 
   async function handleSync(clientId: string) {
     const clientAccounts = accounts.filter(a => a.client_id === clientId);
-    const session = await supabase.auth.getSession();
-    const accessToken = session.data.session?.access_token;
     const logs: string[] = [];
     for (const account of clientAccounts) {
       try {
         const res = await fetch(`${SUPABASE_URL}/functions/v1/meta-sync-creative-intelligence`, {
           method: 'POST',
-          headers: { apikey: ANON_KEY, Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+          headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ account_id: account.ad_account_id, date_preset: 'last_30d', time_increment: 1 }),
         });
         const data = await res.json();
         if (data.error) throw new Error(data.error);
-        logs.push(`✓ ${account.name}: ${data.synced_insights_rows ?? 0} linhas · ${data.unique_ads ?? 0} ads`);
+        const d = data.debug ?? {};
+        const debugStr = `[ids:${d.creative_ids_found ?? '?'} specs:${d.specs_fetched ?? '?'} urls:${d.urls_extracted ?? '?'}]`;
+        const errStr = d.spec_errors?.length ? ` errs:${JSON.stringify(d.spec_errors[0])}` : '';
+        const sampleStr = d.sample_spec ? ` sample:${JSON.stringify(d.sample_spec)}` : '';
+        logs.push(`✓ ${account.name}: ${data.synced_insights_rows ?? 0} linhas · ${data.unique_ads ?? 0} ads · ${debugStr}${errStr}${sampleStr}`);
       } catch (e: any) {
         logs.push(`✗ ${account.name}: ${e.message}`);
       }

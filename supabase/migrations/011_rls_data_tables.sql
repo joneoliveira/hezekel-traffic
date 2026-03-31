@@ -6,11 +6,17 @@ ALTER TABLE meta_ad_insights  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE creative_scores   ENABLE ROW LEVEL SECURITY;
 
 -- Edge functions use service_role key and bypass RLS (sync, feed, duplicate)
+DROP POLICY IF EXISTS "creatives_service" ON meta_ad_creatives;
+DROP POLICY IF EXISTS "insights_service"  ON meta_ad_insights;
+DROP POLICY IF EXISTS "scores_service"    ON creative_scores;
 CREATE POLICY "creatives_service" ON meta_ad_creatives FOR ALL TO service_role USING (true);
 CREATE POLICY "insights_service"  ON meta_ad_insights  FOR ALL TO service_role USING (true);
 CREATE POLICY "scores_service"    ON creative_scores   FOR ALL TO service_role USING (true);
 
 -- super_admin sees all; others see only data from accounts assigned to their clients
+DROP POLICY IF EXISTS "creatives_select" ON meta_ad_creatives;
+DROP POLICY IF EXISTS "insights_select"  ON meta_ad_insights;
+DROP POLICY IF EXISTS "scores_select"    ON creative_scores;
 CREATE POLICY "creatives_select" ON meta_ad_creatives FOR SELECT TO authenticated USING (
   EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'super_admin')
   OR (

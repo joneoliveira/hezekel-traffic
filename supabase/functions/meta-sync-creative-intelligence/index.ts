@@ -195,6 +195,13 @@ serve(async (req) => {
       }
     }
 
+    // Debug counters
+    let debug_creative_ids = 0;
+    let debug_specs_fetched = 0;
+    let debug_spec_errors: any[] = [];
+    let debug_urls_extracted = 0;
+    let debug_sample_spec: any = null;
+
     // Process in batches of 50
     for (let batchStart = 0; batchStart < adIdsArr.length; batchStart += 50) {
       const batch = adIdsArr.slice(batchStart, batchStart + 50);
@@ -227,7 +234,7 @@ serve(async (req) => {
         const info = adInfoMap.get(adId) || {};
 
         if (creative.video_id) videoIds.push({ adId, videoId: creative.video_id });
-        if (creative.id) creativeIdToAdId.set(creative.id, adId);
+        if (creative.id) { creativeIdToAdId.set(creative.id, adId); debug_creative_ids++; }
 
         adDataMap.set(adId, { adData, creative, info });
       }
@@ -248,12 +255,16 @@ serve(async (req) => {
             creativeUrl.searchParams.set('access_token', accessToken!);
             const data = await fetch(creativeUrl.toString()).then(r => r.json());
             if (!data.error) {
+              debug_specs_fetched++;
+              if (!debug_sample_spec) debug_sample_spec = { id: creativeId, raw: data };
               specByCreativeId.set(creativeId, {
                 spec: data.object_story_spec || {},
                 assetFeed: data.asset_feed_spec || {},
               });
+            } else {
+              debug_spec_errors.push({ id: creativeId, error: data.error });
             }
-          } catch (_) { /* skip — url will remain null */ }
+          } catch (err: any) { debug_spec_errors.push({ id: creativeId, error: err?.message }); }
         }));
       }
 
@@ -265,6 +276,7 @@ serve(async (req) => {
         const spec = creativeSpec?.spec || {};
         const assetFeed = creativeSpec?.assetFeed || {};
         const destinationUrl = extractDestinationUrl(spec, assetFeed);
+        if (destinationUrl) debug_urls_extracted++;
 
         creativeRows.push({
           account_id: accountTag,
@@ -325,6 +337,13 @@ serve(async (req) => {
       unique_ads: adIds.size,
       creatives_upserted,
       videos_resolved,
+      debug: {
+        creative_ids_found: debug_creative_ids,
+        specs_fetched: debug_specs_fetched,
+        urls_extracted: debug_urls_extracted,
+        spec_errors: debug_spec_errors.slice(0, 3),
+        sample_spec: debug_sample_spec,
+      },
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (e: any) {
