@@ -29,8 +29,15 @@ const ClientContext = createContext<ClientContextValue>({
 
 export function ClientProvider({ children }: { children: React.ReactNode }) {
   const [clients, setClients] = useState<Client[]>([]);
-  const [activeClientId, setActiveClientId] = useState<string | null>(null);
+  const [activeClientId, setActiveClientIdState] = useState<string | null>(
+    () => localStorage.getItem('hezekel_active_client_id')
+  );
   const [loading, setLoading] = useState(true);
+
+  const setActiveClientId = useCallback((id: string) => {
+    localStorage.setItem('hezekel_active_client_id', id);
+    setActiveClientIdState(id);
+  }, []);
 
   const load = useCallback(async () => {
     const { data } = await supabase
@@ -39,9 +46,11 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
       .order('created_at', { ascending: true });
     const list = (data as Client[]) ?? [];
     setClients(list);
-    setActiveClientId(prev => {
+    setActiveClientIdState(prev => {
       if (prev && list.find(c => c.id === prev)) return prev;
-      return list[0]?.id ?? null;
+      const fallback = list[0]?.id ?? null;
+      if (fallback) localStorage.setItem('hezekel_active_client_id', fallback);
+      return fallback;
     });
     setLoading(false);
   }, []);
@@ -74,7 +83,7 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
   return (
     <ClientContext.Provider value={{
       clients, activeClient, loading,
-      setActiveClientId,
+      setActiveClientId: setActiveClientId,
       createClient, renameClient, deleteClient,
       reload: load,
     }}>
