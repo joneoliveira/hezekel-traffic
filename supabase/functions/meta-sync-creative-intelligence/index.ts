@@ -232,32 +232,29 @@ serve(async (req) => {
         adDataMap.set(adId, { adData, creative, info });
       }
 
-      // ── SECOND batch: fetch object_story_spec directly by creative ID ──
-      // Querying creatives directly is the reliable way — expanding from ad object
-      // can return truncated or null object_story_spec for some ad types.
+      // ── Fetch object_story_spec via direct GET (same as meta-duplicate-ad) ──
+      // The Batch API does not reliably return complex nested fields like
+      // object_story_spec. Direct individual calls always return the full spec.
       const creativeIds = Array.from(creativeIdToAdId.keys());
       const specByCreativeId = new Map<string, { spec: any; assetFeed: any }>();
 
-      if (creativeIds.length > 0) {
-        const specBatch = creativeIds.map((cId: string) => ({
-          method: 'GET',
-          relative_url: `${cId}?fields=object_story_spec,asset_feed_spec`,
+      // Process 10 creative fetches at a time to avoid overwhelming the API
+      for (let ci = 0; ci < creativeIds.length; ci += 10) {
+        const chunk = creativeIds.slice(ci, ci + 10);
+        await Promise.all(chunk.map(async (creativeId) => {
+          try {
+            const creativeUrl = new URL(`${BASE}/${creativeId}`);
+            creativeUrl.searchParams.set('fields', 'object_story_spec,asset_feed_spec');
+            creativeUrl.searchParams.set('access_token', accessToken!);
+            const data = await fetch(creativeUrl.toString()).then(r => r.json());
+            if (!data.error) {
+              specByCreativeId.set(creativeId, {
+                spec: data.object_story_spec || {},
+                assetFeed: data.asset_feed_spec || {},
+              });
+            }
+          } catch (_) { /* skip — url will remain null */ }
         }));
-        const specRes = await fetch(`${BASE}?access_token=${accessToken}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ batch: specBatch }),
-        });
-        const specData = await specRes.json();
-        for (let j = 0; j < creativeIds.length; j++) {
-          const item = specData[j];
-          if (!item || item.code !== 200) continue;
-          const parsed = JSON.parse(item.body);
-          specByCreativeId.set(creativeIds[j], {
-            spec: parsed.object_story_spec || {},
-            assetFeed: parsed.asset_feed_spec || {},
-          });
-        }
       }
 
       // ── Build creative rows ────────────────────────────────────────────────
