@@ -53,11 +53,16 @@ serve(async (req) => {
       'video_p50_watched_actions', 'video_p75_watched_actions', 'video_p100_watched_actions',
     ].join(',');
 
-    const insightUrl = `${BASE}/act_${accountId}/insights?fields=${insightFields}&date_preset=${date_preset}&time_increment=1&level=ad&limit=500&access_token=${accessToken}`;
-    const insightData = await fetch(insightUrl).then(r => r.json());
-    if (insightData.error) throw new Error(insightData.error.message);
+    // Paginate through all insight rows (Meta returns max 500 per page)
+    const insights: any[] = [];
+    let nextUrl: string | null = `${BASE}/act_${accountId}/insights?fields=${insightFields}&date_preset=${date_preset}&time_increment=1&level=ad&limit=500&access_token=${accessToken}`;
 
-    const insights: any[] = insightData.data || [];
+    while (nextUrl) {
+      const pageData = await fetch(nextUrl).then(r => r.json());
+      if (pageData.error) throw new Error(pageData.error.message);
+      insights.push(...(pageData.data || []));
+      nextUrl = pageData.paging?.next ?? null;
+    }
     const adIds = new Set<string>();
     const adInfoMap = new Map<string, any>();
 
