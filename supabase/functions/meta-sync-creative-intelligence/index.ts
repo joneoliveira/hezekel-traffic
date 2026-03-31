@@ -199,9 +199,10 @@ serve(async (req) => {
     for (let batchStart = 0; batchStart < adIdsArr.length; batchStart += 50) {
       const batch = adIdsArr.slice(batchStart, batchStart + 50);
 
+      // ── FIRST batch: ad details + creative ID (no spec — expanded spec is unreliable) ──
       const batchRequests = batch.map((adId: string) => ({
         method: 'GET',
-        relative_url: `${adId}?fields=name,effective_status,adset_id,campaign_id,creative{id,image_url,thumbnail_url,video_id,object_story_spec,asset_feed_spec}`,
+        relative_url: `${adId}?fields=name,effective_status,adset_id,campaign_id,creative{id,image_url,thumbnail_url,video_id}`,
       }));
 
       const batchRes = await fetch(`${BASE}?access_token=${accessToken}`, {
@@ -211,7 +212,9 @@ serve(async (req) => {
       });
       const batchData = await batchRes.json();
 
-      const creativeRows: any[] = [];
+      // Collect ad data and map creative ID → ad ID
+      const adDataMap = new Map<string, { adData: any; creative: any; info: any }>();
+      const creativeIdToAdId = new Map<string, string>();
       const videoIds: { adId: string; videoId: string }[] = [];
 
       for (let i = 0; i < batch.length; i++) {
@@ -224,10 +227,46 @@ serve(async (req) => {
         const info = adInfoMap.get(adId) || {};
 
         if (creative.video_id) videoIds.push({ adId, videoId: creative.video_id });
+        if (creative.id) creativeIdToAdId.set(creative.id, adId);
 
-        // Extract destination URL — covers all known Meta ad formats
-        const spec = creative.object_story_spec || {};
-        const assetFeed = creative.asset_feed_spec || {};
+        adDataMap.set(adId, { adData, creative, info });
+      }
+
+      // ── SECOND batch: fetch object_story_spec directly by creative ID ──
+      // Querying creatives directly is the reliable way — expanding from ad object
+      // can return truncated or null object_story_spec for some ad types.
+      const creativeIds = Array.from(creativeIdToAdId.keys());
+      const specByCreativeId = new Map<string, { spec: any; assetFeed: any }>();
+
+      if (creativeIds.length > 0) {
+        const specBatch = creativeIds.map((cId: string) => ({
+          method: 'GET',
+          relative_url: `${cId}?fields=object_story_spec,asset_feed_spec`,
+        }));
+        const specRes = await fetch(`${BASE}?access_token=${accessToken}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ batch: specBatch }),
+        });
+        const specData = await specRes.json();
+        for (let j = 0; j < creativeIds.length; j++) {
+          const item = specData[j];
+          if (!item || item.code !== 200) continue;
+          const parsed = JSON.parse(item.body);
+          specByCreativeId.set(creativeIds[j], {
+            spec: parsed.object_story_spec || {},
+            assetFeed: parsed.asset_feed_spec || {},
+          });
+        }
+      }
+
+      // ── Build creative rows ────────────────────────────────────────────────
+      const creativeRows: any[] = [];
+
+      for (const [adId, { adData, creative, info }] of adDataMap) {
+        const creativeSpec = creative.id ? specByCreativeId.get(creative.id) : undefined;
+        const spec = creativeSpec?.spec || {};
+        const assetFeed = creativeSpec?.assetFeed || {};
         const destinationUrl = extractDestinationUrl(spec, assetFeed);
 
         creativeRows.push({
