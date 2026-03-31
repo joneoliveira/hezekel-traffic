@@ -6,7 +6,31 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const BASE = 'https://graph.facebook.com/v20.0';
+const BASE = 'https://graph.facebook.com/v25.0';
+
+function extractDestinationUrl(spec: any, assetFeed: any): string | null {
+  // Standard link ads
+  if (spec.link_data?.call_to_action?.value?.link) return spec.link_data.call_to_action.value.link;
+  if (spec.link_data?.link) return spec.link_data.link;
+
+  // Carousel ads — URL lives in the first child attachment
+  const firstChild = spec.link_data?.child_attachments?.[0];
+  if (firstChild?.call_to_action?.value?.link) return firstChild.call_to_action.value.link;
+  if (firstChild?.link) return firstChild.link;
+
+  // Video ads
+  if (spec.video_data?.call_to_action?.value?.link) return spec.video_data.call_to_action.value.link;
+  if (spec.video_data?.link) return spec.video_data.link;
+
+  // Dynamic / template ads (catalog, collection)
+  if (spec.template_data?.call_to_action?.value?.link) return spec.template_data.call_to_action.value.link;
+  if (spec.template_data?.link) return spec.template_data.link;
+
+  // Advantage+ / asset feed
+  if (assetFeed?.link_urls?.[0]?.website_url) return assetFeed.link_urls[0].website_url;
+
+  return null;
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -201,19 +225,10 @@ serve(async (req) => {
 
         if (creative.video_id) videoIds.push({ adId, videoId: creative.video_id });
 
-        // Extract destination URL from object_story_spec or asset_feed_spec
+        // Extract destination URL — covers all known Meta ad formats
         const spec = creative.object_story_spec || {};
         const assetFeed = creative.asset_feed_spec || {};
-        let destinationUrl: string | null = null;
-        if (spec.link_data?.call_to_action?.value?.link) {
-          destinationUrl = spec.link_data.call_to_action.value.link;
-        } else if (spec.link_data?.link) {
-          destinationUrl = spec.link_data.link;
-        } else if (spec.video_data?.call_to_action?.value?.link) {
-          destinationUrl = spec.video_data.call_to_action.value.link;
-        } else if (assetFeed.link_urls?.[0]?.website_url) {
-          destinationUrl = assetFeed.link_urls[0].website_url;
-        }
+        const destinationUrl = extractDestinationUrl(spec, assetFeed);
 
         creativeRows.push({
           account_id: accountTag,
