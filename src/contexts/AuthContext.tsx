@@ -75,6 +75,7 @@ export function useAuth() {
 
 export function canAccess(role: UserRole | null, page: string): boolean {
   if (!role) return false;
+  if (page === 'admin') return role === 'super_admin';
   if (role === 'super_admin') return true;
   if (role === 'gestor') return true;
   if (role === 'gestor_trafego') return page !== 'settings';

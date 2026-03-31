@@ -1,16 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
   CheckCircle2, AlertCircle, Loader2, Eye, EyeOff, KeyRound,
-  Plus, Trash2, Star, Pencil, Check, X, Building2, RefreshCw, Briefcase, UserPlus,
+  Plus, Trash2, Star, Pencil, Check, X, Building2, RefreshCw,
 } from 'lucide-react';
 import { useAccountContext, type MetaAccount } from '@/contexts/AccountContext';
-import { useClientContext, type Client } from '@/contexts/ClientContext';
+import { useClientContext } from '@/contexts/ClientContext';
 import { useAuth } from '@/contexts/AuthContext';
-import UserManagement from '@/components/UserManagement';
-import type { UserRole } from '@/contexts/AuthContext';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -149,224 +147,6 @@ function SyncSection() {
                 </div>
               </div>
             ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-// ─── Clients Section ───────────────────────────────────────────────────────────
-
-interface UserWithRole {
-  id: string;
-  email: string;
-  role: UserRole;
-}
-
-interface ClientUser {
-  client_id: string;
-  user_id: string;
-}
-
-const ROLE_LABELS: Record<UserRole, string> = {
-  super_admin: 'Super Admin',
-  gestor: 'Gestor',
-  gestor_trafego: 'Gestor de Tráfego',
-  marketing: 'Time Marketing',
-};
-
-function ClientRow({
-  client, assignedUsers, availableUsers, onRename, onDelete, onAddUser, onRemoveUser,
-}: {
-  client: Client;
-  assignedUsers: UserWithRole[];
-  availableUsers: UserWithRole[];
-  onRename: (id: string, name: string) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
-  onAddUser: (clientId: string, userId: string) => Promise<void>;
-  onRemoveUser: (clientId: string, userId: string) => Promise<void>;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [nameVal, setNameVal] = useState(client.name);
-  const [showUserPicker, setShowUserPicker] = useState(false);
-  const [busy, setBusy] = useState(false);
-
-  async function handleRename() {
-    if (nameVal.trim() && nameVal !== client.name) {
-      setBusy(true);
-      await onRename(client.id, nameVal.trim());
-      setBusy(false);
-    }
-    setEditing(false);
-  }
-
-  return (
-    <div className="rounded-lg border border-border bg-background p-4 space-y-3">
-      <div className="flex items-center gap-3">
-        <div className="flex-1 min-w-0">
-          {editing ? (
-            <div className="flex items-center gap-2">
-              <input
-                autoFocus
-                value={nameVal}
-                onChange={e => setNameVal(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') handleRename(); if (e.key === 'Escape') { setNameVal(client.name); setEditing(false); } }}
-                className="flex-1 h-8 rounded border border-input bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-              <button onClick={handleRename} disabled={busy} className="text-green-600 hover:text-green-700"><Check className="w-4 h-4" /></button>
-              <button onClick={() => { setNameVal(client.name); setEditing(false); }} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
-            </div>
-          ) : (
-            <span className="font-semibold text-sm">{client.name}</span>
-          )}
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <Button variant="ghost" size="icon" onClick={() => setEditing(true)} className="h-7 w-7 text-muted-foreground hover:text-foreground">
-            <Pencil className="w-3 h-3" />
-          </Button>
-          <Button variant="ghost" size="icon" onClick={async () => { setBusy(true); await onDelete(client.id); setBusy(false); }} disabled={busy} className="h-7 w-7 text-muted-foreground hover:text-destructive">
-            {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
-          </Button>
-        </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Usuários com acesso</p>
-        {assignedUsers.length === 0 ? (
-          <p className="text-xs text-muted-foreground">Nenhum usuário atribuído.</p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {assignedUsers.map(u => (
-              <div key={u.id} className="flex items-center gap-1.5 bg-muted rounded-md px-2 py-1 text-xs">
-                <span className="font-medium">{u.email}</span>
-                <span className="text-muted-foreground">· {ROLE_LABELS[u.role]}</span>
-                <button
-                  onClick={() => onRemoveUser(client.id, u.id)}
-                  className="text-muted-foreground hover:text-destructive ml-1"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {availableUsers.length > 0 && (
-          <div className="relative">
-            {showUserPicker ? (
-              <div className="flex flex-wrap gap-1 mt-1">
-                {availableUsers.map(u => (
-                  <button
-                    key={u.id}
-                    onClick={async () => { await onAddUser(client.id, u.id); setShowUserPicker(false); }}
-                    className="flex items-center gap-1 bg-background border border-border rounded px-2 py-1 text-xs hover:bg-muted transition-colors"
-                  >
-                    <UserPlus className="w-3 h-3" />
-                    {u.email}
-                  </button>
-                ))}
-                <button onClick={() => setShowUserPicker(false)} className="text-xs text-muted-foreground px-2 py-1 hover:text-foreground">Cancelar</button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setShowUserPicker(true)}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mt-1"
-              >
-                <UserPlus className="w-3 h-3" />
-                Adicionar usuário
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ClientsSection() {
-  const { clients, createClient, renameClient, deleteClient } = useClientContext();
-  const [allUsers, setAllUsers] = useState<UserWithRole[]>([]);
-  const [clientUsers, setClientUsers] = useState<ClientUser[]>([]);
-  const [newClientName, setNewClientName] = useState('');
-  const [creating, setCreating] = useState(false);
-
-  const loadClientUsers = useCallback(async () => {
-    const { data } = await supabase.from('client_users').select('client_id, user_id');
-    if (data) setClientUsers(data as ClientUser[]);
-  }, []);
-
-  useEffect(() => {
-    supabase.rpc('get_all_users_with_roles').then(({ data }) => {
-      if (data) setAllUsers(data as UserWithRole[]);
-    });
-    loadClientUsers();
-  }, [loadClientUsers]);
-
-  async function handleCreate() {
-    if (!newClientName.trim()) return;
-    setCreating(true);
-    try {
-      await createClient(newClientName.trim());
-      setNewClientName('');
-    } finally {
-      setCreating(false);
-    }
-  }
-
-  async function handleAddUser(clientId: string, userId: string) {
-    await supabase.from('client_users').insert({ client_id: clientId, user_id: userId });
-    await loadClientUsers();
-  }
-
-  async function handleRemoveUser(clientId: string, userId: string) {
-    await supabase.from('client_users').delete().eq('client_id', clientId).eq('user_id', userId);
-    setClientUsers(prev => prev.filter(cu => !(cu.client_id === clientId && cu.user_id === userId)));
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Briefcase className="w-4 h-4" />
-          Clientes
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex gap-2">
-          <input
-            value={newClientName}
-            onChange={e => setNewClientName(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') handleCreate(); }}
-            placeholder="Nome do cliente (ex: Império Médico)"
-            className="flex-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-          <Button onClick={handleCreate} disabled={creating || !newClientName.trim()}>
-            {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4 mr-1" />Criar</>}
-          </Button>
-        </div>
-
-        {clients.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nenhum cliente cadastrado ainda.</p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {clients.map(client => {
-              const assignedIds = clientUsers.filter(cu => cu.client_id === client.id).map(cu => cu.user_id);
-              const assignedUsers = allUsers.filter(u => assignedIds.includes(u.id));
-              const availableUsers = allUsers.filter(u => !assignedIds.includes(u.id));
-              return (
-                <ClientRow
-                  key={client.id}
-                  client={client}
-                  assignedUsers={assignedUsers}
-                  availableUsers={availableUsers}
-                  onRename={renameClient}
-                  onDelete={deleteClient}
-                  onAddUser={handleAddUser}
-                  onRemoveUser={handleRemoveUser}
-                />
-              );
-            })}
           </div>
         )}
       </CardContent>
@@ -600,8 +380,6 @@ export default function SettingsPage() {
 
       <SyncSection />
 
-      {role === 'super_admin' && <ClientsSection />}
-
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
@@ -635,8 +413,6 @@ export default function SettingsPage() {
       </Card>
 
       {(role === 'super_admin' || role === 'gestor') && <AddAccountForm onAdded={reload} />}
-
-      {role === 'super_admin' && <UserManagement />}
     </div>
   );
 }
