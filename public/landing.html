@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hezekel Traffic — Inteligência para seus anúncios Meta</title>
+  <meta name="description" content="Plataforma de analytics e gestão de criativos para equipes de tráfego pago. Veja quais anúncios vencem, quais estão em risco e tome decisões mais rápidas." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #111111;
+      --surface2: #181818;
+      --border: #222222;
+      --border2: #2a2a2a;
+      --text: #f0f0f0;
+      --muted: #888888;
+      --muted2: #555555;
+      --accent: #f0f0f0;
+      --winner: #22c55e;
+      --good: #3b82f6;
+      --risk: #f59e0b;
+      --bad: #ef4444;
+      --learning: #8b5cf6;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      line-height: 1.6;
+      font-size: 16px;
+    }
+
+    /* ── NAV ────────────────────────────────────────── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 48px;
+      background: rgba(10,10,10,0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      display: flex; align-items: center; gap: 14px;
+    }
+    .logo-bars {
+      display: flex; align-items: flex-end; gap: 3px; height: 28px;
+    }
+    .logo-bars span {
+      width: 6px; border-radius: 2px; background: var(--text);
+    }
+    .logo-bars span:nth-child(1) { height: 35%; opacity: 0.3; }
+    .logo-bars span:nth-child(2) { height: 55%; opacity: 0.5; }
+    .logo-bars span:nth-child(3) { height: 75%; opacity: 0.75; }
+    .logo-bars span:nth-child(4) { height: 100%; }
+
+    .logo-text { display: flex; flex-direction: column; }
+    .logo-text strong { font-size: 15px; font-weight: 800; letter-spacing: 0.5px; }
+    .logo-text small { font-size: 8px; font-weight: 500; letter-spacing: 5px; color: var(--muted); text-transform: uppercase; }
+
+    .nav-links { display: flex; gap: 32px; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: 14px; transition: color .2s; }
+    .nav-links a:hover { color: var(--text); }
+
+    .nav-cta {
+      background: var(--text); color: #000;
+      border: none; border-radius: 8px;
+      padding: 10px 22px; font-size: 14px; font-weight: 600;
+      cursor: pointer; text-decoration: none;
+      transition: opacity .2s;
+    }
+    .nav-cta:hover { opacity: 0.85; }
+
+    /* ── HERO ───────────────────────────────────────── */
+    .hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center;
+      padding: 120px 24px 80px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute; top: -200px; left: 50%; transform: translateX(-50%);
+      width: 900px; height: 900px; border-radius: 50%;
+      background: radial-gradient(ellipse, rgba(255,255,255,0.04) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: 100px; padding: 6px 16px; font-size: 12px;
+      color: var(--muted); margin-bottom: 32px; letter-spacing: 0.5px;
+    }
+    .hero-badge span { width: 6px; height: 6px; border-radius: 50%; background: var(--winner); }
+
+    h1 {
+      font-size: clamp(36px, 6vw, 72px);
+      font-weight: 800;
+      letter-spacing: -2px;
+      line-height: 1.05;
+      max-width: 800px;
+      margin-bottom: 24px;
+    }
+    h1 em { font-style: normal; color: var(--muted); }
+
+    .hero-sub {
+      font-size: clamp(16px, 2vw, 20px);
+      color: var(--muted);
+      max-width: 560px;
+      margin-bottom: 48px;
+      line-height: 1.7;
+    }
+
+    .hero-buttons { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+
+    .btn-primary {
+      background: var(--text); color: #000;
+      border: none; border-radius: 10px;
+      padding: 14px 32px; font-size: 15px; font-weight: 700;
+      cursor: pointer; text-decoration: none;
+      transition: opacity .2s, transform .2s;
+    }
+    .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+
+    .btn-secondary {
+      background: transparent; color: var(--muted);
+      border: 1px solid var(--border2); border-radius: 10px;
+      padding: 14px 32px; font-size: 15px; font-weight: 500;
+      cursor: pointer; text-decoration: none;
+      transition: color .2s, border-color .2s;
+    }
+    .btn-secondary:hover { color: var(--text); border-color: var(--muted2); }
+
+    /* ── SCORE PREVIEW ──────────────────────────────── */
+    .score-preview {
+      margin-top: 80px;
+      display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+    }
+
+    .score-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      min-width: 160px;
+      text-align: center;
+    }
+    .score-card .label { font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+    .score-card .score { font-size: 36px; font-weight: 800; }
+    .score-card .status { font-size: 12px; font-weight: 600; margin-top: 4px; }
+    .score-card.winner .score, .score-card.winner .status { color: var(--winner); }
+    .score-card.good .score, .score-card.good .status { color: var(--good); }
+    .score-card.risk .score, .score-card.risk .status { color: var(--risk); }
+    .score-card.bad .score, .score-card.bad .status { color: var(--bad); }
+    .score-card.learning .score, .score-card.learning .status { color: var(--learning); }
+
+    /* ── SECTIONS ───────────────────────────────────── */
+    section { padding: 100px 24px; max-width: 1100px; margin: 0 auto; }
+
+    .section-label {
+      font-size: 11px; font-weight: 600; letter-spacing: 2px;
+      color: var(--muted2); text-transform: uppercase; margin-bottom: 16px;
+    }
+    h2 {
+      font-size: clamp(28px, 4vw, 48px);
+      font-weight: 800; letter-spacing: -1.5px;
+      line-height: 1.1; margin-bottom: 16px;
+    }
+    .section-sub {
+      font-size: 18px; color: var(--muted); max-width: 560px; line-height: 1.7;
+      margin-bottom: 64px;
+    }
+
+    /* ── FEATURE GRID ───────────────────────────────── */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .feature-item {
+      background: var(--surface);
+      padding: 36px 32px;
+      transition: background .2s;
+    }
+    .feature-item:hover { background: var(--surface2); }
+
+    .feature-icon {
+      width: 44px; height: 44px; border-radius: 10px;
+      background: var(--surface2); border: 1px solid var(--border2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; margin-bottom: 20px;
+    }
+    .feature-item h3 { font-size: 17px; font-weight: 700; margin-bottom: 10px; }
+    .feature-item p { font-size: 14px; color: var(--muted); line-height: 1.65; }
+
+    /* ── SCORES SECTION ─────────────────────────────── */
+    .scores-section {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center;
+    }
+    @media (max-width: 768px) { .scores-section { grid-template-columns: 1fr; } }
+
+    .status-list { display: flex; flex-direction: column; gap: 14px; }
+    .status-item {
+      display: flex; align-items: flex-start; gap: 16px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 20px 24px;
+    }
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+    .status-item h4 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .status-item p { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+    /* ── METRICS ────────────────────────────────────── */
+    .metrics-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;
+    }
+    .metric-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 28px 24px; text-align: center;
+    }
+    .metric-card .metric-value { font-size: 32px; font-weight: 800; margin-bottom: 6px; }
+    .metric-card .metric-label { font-size: 13px; color: var(--muted); }
+
+    /* ── WHO ────────────────────────────────────────── */
+    .who-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;
+    }
+    .who-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 28px 24px;
+    }
+    .who-card .who-icon { font-size: 28px; margin-bottom: 14px; }
+    .who-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+    .who-card p { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+    /* ── ROLES ──────────────────────────────────────── */
+    .roles-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .roles-table th {
+      background: var(--surface2);
+      padding: 14px 20px; text-align: left;
+      font-size: 12px; font-weight: 600; letter-spacing: 0.5px;
+      color: var(--muted); border-bottom: 1px solid var(--border);
+    }
+    .roles-table td {
+      padding: 14px 20px; font-size: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .roles-table tr:last-child td { border-bottom: none; }
+    .roles-table td:first-child { font-weight: 600; }
+    .check { color: var(--winner); font-size: 16px; }
+    .cross { color: var(--muted2); font-size: 16px; }
+
+    /* ── PRICING ────────────────────────────────────── */
+    .pricing-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;
+      align-items: start;
+    }
+    .pricing-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 36px 32px; position: relative;
+    }
+    .pricing-card.featured {
+      border-color: #444; background: var(--surface2);
+    }
+    .featured-badge {
+      position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+      background: var(--text); color: #000;
+      font-size: 11px; font-weight: 700; letter-spacing: 1px;
+      padding: 5px 16px; border-radius: 100px; text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .pricing-card h3 { font-size: 14px; font-weight: 600; color: var(--muted); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; }
+    .pricing-price { font-size: 44px; font-weight: 800; letter-spacing: -2px; line-height: 1; margin-bottom: 4px; }
+    .pricing-period { font-size: 14px; color: var(--muted); margin-bottom: 6px; }
+    .pricing-note { font-size: 12px; color: var(--muted2); margin-bottom: 28px; }
+    .pricing-divider { border: none; border-top: 1px solid var(--border); margin-bottom: 24px; }
+
+    .pricing-features { list-style: none; display: flex; flex-direction: column; gap: 12px; margin-bottom: 32px; }
+    .pricing-features li { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--muted); }
+    .pricing-features li .tick { color: var(--winner); font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+    .pricing-features li strong { color: var(--text); }
+
+    .btn-plan {
+      display: block; text-align: center; text-decoration: none;
+      border-radius: 10px; padding: 13px; font-size: 15px; font-weight: 700;
+      transition: opacity .2s, transform .2s; cursor: pointer; border: none;
+    }
+    .btn-plan:hover { opacity: 0.85; transform: translateY(-1px); }
+    .btn-plan-primary { background: var(--text); color: #000; }
+    .btn-plan-secondary { background: transparent; color: var(--text); border: 1px solid var(--border2); }
+
+    /* ── FAQ ────────────────────────────────────────── */
+    .faq-list { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .faq-item { border-bottom: 1px solid var(--border); background: var(--surface); }
+    .faq-item:last-child { border-bottom: none; }
+    .faq-q {
+      padding: 22px 28px; font-size: 15px; font-weight: 600; cursor: pointer;
+      display: flex; justify-content: space-between; align-items: center;
+      user-select: none;
+    }
+    .faq-q .arrow { color: var(--muted); transition: transform .3s; }
+    details[open] .faq-q .arrow { transform: rotate(180deg); }
+    .faq-a { padding: 0 28px 22px; font-size: 14px; color: var(--muted); line-height: 1.7; }
+
+    /* ── CTA ────────────────────────────────────────── */
+    .cta-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 80px 48px;
+      text-align: center;
+      margin: 0 24px 100px;
+    }
+    .cta-section h2 { margin-bottom: 16px; }
+    .cta-section p { color: var(--muted); font-size: 18px; max-width: 480px; margin: 0 auto 40px; line-height: 1.7; }
+
+    /* ── FOOTER ─────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 48px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 16px;
+      font-size: 13px; color: var(--muted2);
+    }
+
+    /* ── DIVIDER FULL ───────────────────────────────── */
+    .full-divider { border: none; border-top: 1px solid var(--border); }
+
+    /* ── RESPONSIVE ─────────────────────────────────── */
+    @media (max-width: 768px) {
+      nav { padding: 16px 20px; }
+      .nav-links { display: none; }
+      section { padding: 72px 20px; }
+      .hero { padding: 100px 20px 60px; }
+      .cta-section { padding: 52px 24px; margin: 0 16px 72px; }
+      footer { padding: 24px 20px; flex-direction: column; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    <div class="logo-bars">
+      <span></span><span></span><span></span><span></span>
+    </div>
+    <div class="logo-text">
+      <strong>HEZEKEL</strong>
+      <small>TRAFFIC</small>
+    </div>
+  </div>
+  <div class="nav-links">
+    <a href="#features">Funcionalidades</a>
+    <a href="#intelligence">Inteligência</a>
+    <a href="#roles">Equipes</a>
+    <a href="#pricing">Preços</a>
+  </div>
+  <a href="#pricing" class="nav-cta">Ver planos</a>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">
+    <span></span>
+    Plataforma de inteligência para tráfego pago
+  </div>
+
+  <h1>Saiba exatamente quais anúncios <em>vencem</em> ou afundam</h1>
+
+  <p class="hero-sub">
+    Hezekel Traffic conecta com sua conta Meta e pontua cada criativo automaticamente.
+    Pare de gastar em anúncios ruins. Escale o que funciona.
+  </p>
+
+  <div class="hero-buttons">
+    <a href="#pricing" class="btn-primary">Começar agora</a>
+    <a href="#features" class="btn-secondary">Ver como funciona</a>
+  </div>
+
+  <div class="score-preview">
+    <div class="score-card winner">
+      <div class="label">Criativo A</div>
+      <div class="score">87</div>
+      <div class="status">Winner</div>
+    </div>
+    <div class="score-card good">
+      <div class="label">Criativo B</div>
+      <div class="score">71</div>
+      <div class="status">Good</div>
+    </div>
+    <div class="score-card risk">
+      <div class="label">Criativo C</div>
+      <div class="score">48</div>
+      <div class="status">Risk</div>
+    </div>
+    <div class="score-card bad">
+      <div class="label">Criativo D</div>
+      <div class="score">22</div>
+      <div class="status">Bad</div>
+    </div>
+    <div class="score-card learning">
+      <div class="label">Criativo E</div>
+      <div class="score">—</div>
+      <div class="status">Learning</div>
+    </div>
+  </div>
+</div>
+
+<hr class="full-divider" />
+
+<!-- FEATURES -->
+<section id="features">
+  <p class="section-label">Funcionalidades</p>
+  <h2>Tudo que seu time de tráfego precisa</h2>
+  <p class="section-sub">
+    Sincronização automática com a Meta, dashboards em tempo real e inteligência de criativos — em um só lugar.
+  </p>
+
+  <div class="feature-grid">
+    <div class="feature-item">
+      <div class="feature-icon">📊</div>
+      <h3>Dashboard de KPIs</h3>
+      <p>Visão geral do gasto, conversões, CPL, ROAS e funil completo (impressões → cliques → conversões) por campanha, conjunto ou anúncio.</p>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">🧠</div>
+      <h3>Inteligência de Criativos</h3>
+      <p>Score de 0 a 100 para cada criativo baseado em métricas reais: CTR, CPL, ROAS, hook rate e CVR da landing page. Status automático: Winner, Good, Risk ou Bad.</p>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">🎬</div>
+      <h3>Inteligência de Conteúdo</h3>
+      <p>Métricas específicas para vídeos pagos: taxa de gancho (hook rate), retenção, conclusão em 25%, 50%, 75% e 100%. Entenda onde o usuário abandona.</p>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">📸</div>
+      <h3>Orgânico do Instagram</h3>
+      <p>Sincronize posts orgânicos e acompanhe alcance, curtidas, comentários, salvamentos, compartilhamentos e engajamento — tudo com score por post.</p>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">📅</div>
+      <h3>Performance Semanal</h3>
+      <p>Histórico de performance por anúncio, semana a semana. Identifique tendências de fadiga de criativo antes de perder dinheiro.</p>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">🔁</div>
+      <h3>Duplicação de Anúncios</h3>
+      <p>Duplique anúncios direto pela plataforma com novas mídias (imagem ou vídeo), sem precisar entrar no Gerenciador de Anúncios da Meta.</p>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">🏢</div>
+      <h3>Multi-cliente</h3>
+      <p>Gerencie múltiplos clientes e contas Meta em um único painel. Troca de cliente com um clique, dados completamente isolados.</p>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">👥</div>
+      <h3>Controle de Acesso</h3>
+      <p>4 níveis de permissão: Super Admin, Gestor, Gestor de Tráfego e Marketing. Cada usuário vê exatamente o que deve ver.</p>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">⚡</div>
+      <h3>Sincronização Automática</h3>
+      <p>Conexão direta com a Meta Graph API v25. Dados de criativos, insights e métricas sempre atualizados com um clique.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="full-divider" />
+
+<!-- INTELLIGENCE -->
+<section id="intelligence">
+  <p class="section-label">Sistema de Score</p>
+  <h2>Chega de adivinhar qual anúncio funciona</h2>
+  <p class="section-sub">
+    Cada criativo recebe um score automático baseado em dados reais da sua conta. Sem subjetividade.
+  </p>
+
+  <div class="scores-section">
+    <div class="status-list">
+      <div class="status-item">
+        <div class="status-dot" style="background: var(--winner)"></div>
+        <div>
+          <h4>Winner — Score 75+</h4>
+          <p>Criativo com alto desempenho em CTR, CPL e ROAS. Candidato a escalar o orçamento imediatamente.</p>
+        </div>
+      </div>
+      <div class="status-item">
+        <div class="status-dot" style="background: var(--good)"></div>
+        <div>
+          <h4>Good — Score 50–74</h4>
+          <p>Performance acima da média do adset. Manter ativo e monitorar evolução.</p>
+        </div>
+      </div>
+      <div class="status-item">
+        <div class="status-dot" style="background: var(--risk)"></div>
+        <div>
+          <h4>Risk — Score 30–49</h4>
+          <p>Anúncio com sinais de queda. Atenção: pode virar Bad em breve se não houver ação.</p>
+        </div>
+      </div>
+      <div class="status-item">
+        <div class="status-dot" style="background: var(--bad)"></div>
+        <div>
+          <h4>Bad — Score abaixo de 30</h4>
+          <p>Criativo com desempenho ruim. Candidato a pausar para parar de queimar orçamento.</p>
+        </div>
+      </div>
+      <div class="status-item">
+        <div class="status-dot" style="background: var(--learning)"></div>
+        <div>
+          <h4>Learning — Dados insuficientes</h4>
+          <p>Anúncio novo ainda em aprendizado. Score calculado assim que atingir volume mínimo.</p>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <p style="font-size: 14px; color: var(--muted); margin-bottom: 28px; line-height: 1.7;">
+        O score é calculado cruzando as seguintes métricas em relação à média do conjunto de anúncios:
+      </p>
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 14px;">Link CTR</span>
+          <span style="font-size: 12px; color: var(--muted);">Taxa de clique no link</span>
+        </div>
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 14px;">CPL</span>
+          <span style="font-size: 12px; color: var(--muted);">Custo por lead</span>
+        </div>
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 14px;">ROAS</span>
+          <span style="font-size: 12px; color: var(--muted);">Retorno sobre o gasto</span>
+        </div>
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 14px;">Hook Rate</span>
+          <span style="font-size: 12px; color: var(--muted);">Retenção dos 3 primeiros segundos</span>
+        </div>
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 14px;">LP CVR</span>
+          <span style="font-size: 12px; color: var(--muted);">Conversão da landing page</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="full-divider" />
+
+<!-- METRICS -->
+<section>
+  <p class="section-label">O que você acompanha</p>
+  <h2>Todas as métricas que importam</h2>
+  <p class="section-sub">Sem precisar exportar planilha ou abrir o Gerenciador de Anúncios.</p>
+
+  <div class="metrics-grid">
+    <div class="metric-card">
+      <div class="metric-value" style="color: var(--winner)">ROAS</div>
+      <div class="metric-label">Retorno sobre investimento em ads</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value" style="color: var(--good)">CPL</div>
+      <div class="metric-label">Custo por lead gerado</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value" style="color: var(--risk)">CTR</div>
+      <div class="metric-label">Taxa de clique no anúncio</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value" style="color: var(--learning)">CPM</div>
+      <div class="metric-label">Custo por mil impressões</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value" style="color: var(--winner)">CPC</div>
+      <div class="metric-label">Custo por clique</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value" style="color: var(--good)">Hook%</div>
+      <div class="metric-label">Retenção nos 3 primeiros segundos</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value" style="color: var(--risk)">LP CVR</div>
+      <div class="metric-label">Conversão da landing page</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value" style="color: var(--learning)">Freq.</div>
+      <div class="metric-label">Frequência de exibição por usuário</div>
+    </div>
+  </div>
+</section>
+
+<hr class="full-divider" />
+
+<!-- WHO -->
+<section>
+  <p class="section-label">Para quem é</p>
+  <h2>Feito para quem vive de resultado</h2>
+  <p class="section-sub">De gestores solo a agências com múltiplos clientes.</p>
+
+  <div class="who-grid">
+    <div class="who-card">
+      <div class="who-icon">🎯</div>
+      <h3>Gestor de Tráfego</h3>
+      <p>Acompanhe todos os seus criativos em um painel limpo. Tome decisões mais rápidas e justifique cada escolha com dados concretos para o cliente.</p>
+    </div>
+    <div class="who-card">
+      <div class="who-icon">🏢</div>
+      <h3>Agências de Marketing</h3>
+      <p>Gerencie N clientes e M contas Meta sem perder o fio da meada. Cada cliente vê apenas os seus dados. Cada colaborador acessa só o que precisa.</p>
+    </div>
+    <div class="who-card">
+      <div class="who-icon">🎨</div>
+      <h3>Time de Criação</h3>
+      <p>Saiba exatamente quais formatos, ganchos e abordagens criativas geram resultado. Produza com inteligência, não no escuro.</p>
+    </div>
+    <div class="who-card">
+      <div class="who-icon">📈</div>
+      <h3>Infoprodutores e Negócios Digitais</h3>
+      <p>Entenda sua funil de conversão completa — do criativo até a compra. Identifique gargalos e escale campanhas com confiança.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="full-divider" />
+
+<!-- ROLES -->
+<section id="roles">
+  <p class="section-label">Controle de Acesso</p>
+  <h2>O time certo vê a coisa certa</h2>
+  <p class="section-sub">
+    4 níveis de permissão para que cada pessoa acesse apenas o que é relevante para ela.
+  </p>
+
+  <div style="overflow-x: auto;">
+    <table class="roles-table">
+      <thead>
+        <tr>
+          <th>Funcionalidade</th>
+          <th>Super Admin</th>
+          <th>Gestor</th>
+          <th>Gestor de Tráfego</th>
+          <th>Marketing</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Dashboard de KPIs</td>
+          <td><span class="check">✓</span></td>
+          <td><span class="check">✓</span></td>
+          <td><span class="check">✓</span></td>
+          <td><span class="cross">—</span></td>
+        </tr>
+        <tr>
+          <td>Inteligência de Criativos</td>
+          <td><span class="check">✓</span></td>
+          <td><span class="check">✓</span></td>
+          <td><span class="check">✓</span></td>
+          <td><span class="check">✓</span></td>
+        </tr>
+        <tr>
+          <td>Inteligência de Conteúdo</td>
+          <td><span class="check">✓</span></td>
+          <td><span class="check">✓</span></td>
+          <td><span class="check">✓</span></td>
+          <td><span class="check">✓</span></td>
+        </tr>
+        <tr>
+          <td>Orgânico do Instagram</td>
+          <td><span class="check">✓</span></td>
+          <td><span class="check">✓</span></td>
+          <td><span class="check">✓</span></td>
+          <td><span class="check">✓</span></td>
+        </tr>
+        <tr>
+          <td>Gestão de Campanhas</td>
+          <td><span class="check">✓</span></td>
+          <td><span class="check">✓</span></td>
+          <td><span class="check">✓</span></td>
+          <td><span class="cross">—</span></td>
+        </tr>
+        <tr>
+          <td>Duplicar Anúncios</td>
+          <td><span class="check">✓</span></td>
+          <td><span class="check">✓</span></td>
+          <td><span class="cross">—</span></td>
+          <td><span class="cross">—</span></td>
+        </tr>
+        <tr>
+          <td>Configurações e Token Meta</td>
+          <td><span class="check">✓</span></td>
+          <td><span class="check">✓</span></td>
+          <td><span class="cross">—</span></td>
+          <td><span class="cross">—</span></td>
+        </tr>
+        <tr>
+          <td>Gestão de Usuários e Clientes</td>
+          <td><span class="check">✓</span></td>
+          <td><span class="cross">—</span></td>
+          <td><span class="cross">—</span></td>
+          <td><span class="cross">—</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<hr class="full-divider" />
+
+<!-- PRICING -->
+<section id="pricing">
+  <p class="section-label">Planos e Preços</p>
+  <h2>Comece pequeno, cresça sem limite</h2>
+  <p class="section-sub">
+    Sem taxa de setup. Cancele quando quiser.
+  </p>
+
+  <div class="pricing-grid">
+
+    <!-- STARTER -->
+    <div class="pricing-card">
+      <h3>Starter</h3>
+      <div class="pricing-price">R$297</div>
+      <div class="pricing-period">/mês</div>
+      <div class="pricing-note">ideal para gestor solo ou negócio próprio</div>
+      <hr class="pricing-divider" />
+      <ul class="pricing-features">
+        <li><span class="tick">✓</span><span><strong>1 cliente</strong> / conta Meta</span></li>
+        <li><span class="tick">✓</span><span><strong>2 usuários</strong> incluídos</span></li>
+        <li><span class="tick">✓</span><span>Dashboard de KPIs</span></li>
+        <li><span class="tick">✓</span><span>Inteligência de Criativos + Score</span></li>
+        <li><span class="tick">✓</span><span>Inteligência de Conteúdo (vídeos)</span></li>
+        <li><span class="tick">✓</span><span>Orgânico do Instagram</span></li>
+        <li><span class="tick">✓</span><span>Sincronização com a Meta API</span></li>
+      </ul>
+      <a href="#" class="btn-plan btn-plan-secondary">Começar com Starter</a>
+    </div>
+
+    <!-- PRO -->
+    <div class="pricing-card featured">
+      <div class="featured-badge">Mais popular</div>
+      <h3>Pro</h3>
+      <div class="pricing-price">R$597</div>
+      <div class="pricing-period">/mês</div>
+      <div class="pricing-note">ideal para agências com até 5 clientes</div>
+      <hr class="pricing-divider" />
+      <ul class="pricing-features">
+        <li><span class="tick">✓</span><span><strong>5 clientes</strong> / contas Meta</span></li>
+        <li><span class="tick">✓</span><span><strong>10 usuários</strong> incluídos</span></li>
+        <li><span class="tick">✓</span><span>Tudo do Starter</span></li>
+        <li><span class="tick">✓</span><span>Duplicação de anúncios</span></li>
+        <li><span class="tick">✓</span><span>Performance Semanal por criativo</span></li>
+        <li><span class="tick">✓</span><span>Controle de acesso por papel</span></li>
+        <li><span class="tick">✓</span><span>Gestão de múltiplas contas Meta</span></li>
+      </ul>
+      <a href="#" class="btn-plan btn-plan-primary">Começar com Pro</a>
+    </div>
+
+    <!-- AGENCY -->
+    <div class="pricing-card">
+      <h3>Agency</h3>
+      <div class="pricing-price">R$1.197</div>
+      <div class="pricing-period">/mês</div>
+      <div class="pricing-note">para agências em crescimento acelerado</div>
+      <hr class="pricing-divider" />
+      <ul class="pricing-features">
+        <li><span class="tick">✓</span><span><strong>Clientes ilimitados</strong></span></li>
+        <li><span class="tick">✓</span><span><strong>Usuários ilimitados</strong></span></li>
+        <li><span class="tick">✓</span><span>Tudo do Pro</span></li>
+        <li><span class="tick">✓</span><span>Suporte prioritário via WhatsApp</span></li>
+        <li><span class="tick">✓</span><span>Onboarding dedicado</span></li>
+        <li><span class="tick">✓</span><span>Acesso antecipado a novas features</span></li>
+        <li><span class="tick">✓</span><span>SLA de resposta em até 4 horas</span></li>
+      </ul>
+      <a href="#" class="btn-plan btn-plan-secondary">Falar com vendas</a>
+    </div>
+
+  </div>
+
+  <p style="text-align: center; font-size: 13px; color: var(--muted2); margin-top: 32px;">
+    Todos os planos incluem 7 dias de teste grátis. Não exigimos cartão de crédito para começar.
+  </p>
+</section>
+
+<hr class="full-divider" />
+
+<!-- FAQ -->
+<section>
+  <p class="section-label">Dúvidas frequentes</p>
+  <h2>Perguntas e respostas</h2>
+  <p class="section-sub" style="margin-bottom: 40px;">Ficou com alguma dúvida? Fale com a gente.</p>
+
+  <div class="faq-list">
+    <details class="faq-item">
+      <summary class="faq-q">Como a plataforma se conecta com a minha conta Meta? <span class="arrow">▾</span></summary>
+      <p class="faq-a">Você informa seu token de acesso e o ID da conta de anúncios Meta. A plataforma usa a Meta Graph API v25 para buscar seus dados de forma segura, sem precisar de login ou senha da sua conta.</p>
+    </details>
+    <details class="faq-item">
+      <summary class="faq-q">Os dados são atualizados automaticamente? <span class="arrow">▾</span></summary>
+      <p class="faq-a">A sincronização pode ser disparada manualmente com um clique. Estamos trabalhando em sincronização automática agendada para os próximos meses.</p>
+    </details>
+    <details class="faq-item">
+      <summary class="faq-q">Quantas contas Meta posso conectar? <span class="arrow">▾</span></summary>
+      <p class="faq-a">No plano Starter: 1 conta. No Pro: até 5 contas, cada uma vinculada a um cliente diferente. No Agency: sem limite de contas ou clientes.</p>
+    </details>
+    <details class="faq-item">
+      <summary class="faq-q">Posso adicionar colaboradores? <span class="arrow">▾</span></summary>
+      <p class="faq-a">Sim. Você cria usuários na plataforma e define o papel de cada um: Gestor, Gestor de Tráfego ou Marketing. Cada papel tem acesso às funcionalidades adequadas.</p>
+    </details>
+    <details class="faq-item">
+      <summary class="faq-q">O que é o score de criativo e como é calculado? <span class="arrow">▾</span></summary>
+      <p class="faq-a">É um número de 0 a 100 que representa a performance de cada anúncio em relação à média do seu conjunto. É calculado cruzando CTR, CPL, ROAS, hook rate e conversão de landing page — métricas que vêm direto da Meta API.</p>
+    </details>
+    <details class="faq-item">
+      <summary class="faq-q">Preciso de contrato ou posso cancelar a qualquer momento? <span class="arrow">▾</span></summary>
+      <p class="faq-a">Sem contrato. Você pode cancelar quando quiser, sem multas ou taxas. Cobramos mensalmente e o acesso continua até o fim do período pago.</p>
+    </details>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-section">
+  <h2>Pronto para parar de adivinhar?</h2>
+  <p>Comece com 7 dias grátis e veja quais criativos realmente funcionam na sua conta.</p>
+  <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+    <a href="#pricing" class="btn-primary">Começar gratuitamente</a>
+    <a href="#" class="btn-secondary">Falar com a equipe</a>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div style="display: flex; align-items: center; gap: 12px;">
+    <div class="logo-bars" style="height: 20px;">
+      <span style="width:5px; background: var(--muted2);"></span>
+      <span style="width:5px; background: var(--muted2);"></span>
+      <span style="width:5px; background: var(--muted2);"></span>
+      <span style="width:5px; background: var(--muted2);"></span>
+    </div>
+    <span style="font-size: 13px; font-weight: 700; color: var(--muted2); letter-spacing: 0.5px;">HEZEKEL TRAFFIC</span>
+  </div>
+  <span>Inteligência para tráfego pago • Meta Graph API v25</span>
+  <span>© 2025 Hezekel Traffic. Todos os direitos reservados.</span>
+</footer>
+
+</body>
+</html>
