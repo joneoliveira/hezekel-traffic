@@ -490,11 +490,30 @@
 
 <!-- INTELLIGENCE -->
 <section id="intelligence">
-  <p class="section-label">Sistema de Score</p>
-  <h2>Chega de adivinhar qual anúncio funciona</h2>
+  <p class="section-label">IA de Criativos</p>
+  <h2>Inteligência que aprende com a <em>sua</em> conta</h2>
   <p class="section-sub">
-    Cada criativo recebe um score automático baseado em dados reais da sua conta. Sem subjetividade.
+    Nosso algoritmo de IA analisa cada criativo e atribui um score de 0 a 100 — não com base em médias do mercado, mas com base nos <strong style="color: var(--text)">seus próprios números</strong>.
   </p>
+
+  <!-- destaque conceitual -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 64px;">
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 32px 28px;">
+      <div style="font-size: 28px; margin-bottom: 16px;">🧠</div>
+      <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 10px;">Cálculo interno por IA</h3>
+      <p style="font-size: 14px; color: var(--muted); line-height: 1.7;">O score não é um número genérico. É calculado por um algoritmo proprietário que cruza múltiplas métricas e entrega um veredito claro: escalar, monitorar ou pausar.</p>
+    </div>
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 32px 28px;">
+      <div style="font-size: 28px; margin-bottom: 16px;">📐</div>
+      <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 10px;">Sua média, não a do mercado</h3>
+      <p style="font-size: 14px; color: var(--muted); line-height: 1.7;">Não usamos benchmarks externos nem médias de setor. O algoritmo se calibra automaticamente com base na média real da sua conta — tornando o score justo e contextualizado para o seu negócio.</p>
+    </div>
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 32px 28px;">
+      <div style="font-size: 28px; margin-bottom: 16px;">⚡</div>
+      <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 10px;">Decisão sem achismo</h3>
+      <p style="font-size: 14px; color: var(--muted); line-height: 1.7;">Chega de debater em reunião qual criativo está "parecendo" bom. O sistema diz com dados: este aqui é Winner, aquele está em risco. A decisão fica fácil.</p>
+    </div>
+  </div>
 
   <div class="scores-section">
     <div class="status-list">
@@ -502,64 +521,72 @@
         <div class="status-dot" style="background: var(--winner)"></div>
         <div>
           <h4>Winner — Score 75+</h4>
-          <p>Criativo com alto desempenho em CTR, CPL e ROAS. Candidato a escalar o orçamento imediatamente.</p>
+          <p>Desempenho acima da média da conta em CTR, CPL e ROAS. Sinal claro para escalar orçamento.</p>
         </div>
       </div>
       <div class="status-item">
         <div class="status-dot" style="background: var(--good)"></div>
         <div>
           <h4>Good — Score 50–74</h4>
-          <p>Performance acima da média do adset. Manter ativo e monitorar evolução.</p>
+          <p>Performance consistente acima da sua média histórica. Manter ativo e monitorar evolução.</p>
         </div>
       </div>
       <div class="status-item">
         <div class="status-dot" style="background: var(--risk)"></div>
         <div>
           <h4>Risk — Score 30–49</h4>
-          <p>Anúncio com sinais de queda. Atenção: pode virar Bad em breve se não houver ação.</p>
+          <p>Métricas abaixo da média da conta. A IA identifica queda antes que você queime mais orçamento.</p>
         </div>
       </div>
       <div class="status-item">
         <div class="status-dot" style="background: var(--bad)"></div>
         <div>
           <h4>Bad — Score abaixo de 30</h4>
-          <p>Criativo com desempenho ruim. Candidato a pausar para parar de queimar orçamento.</p>
+          <p>Criativo significativamente abaixo do padrão da sua conta. Candidato a pausar imediatamente.</p>
         </div>
       </div>
       <div class="status-item">
         <div class="status-dot" style="background: var(--learning)"></div>
         <div>
-          <h4>Learning — Dados insuficientes</h4>
-          <p>Anúncio novo ainda em aprendizado. Score calculado assim que atingir volume mínimo.</p>
+          <h4>Learning — Calibrando</h4>
+          <p>Anúncio novo ainda sendo calibrado com os dados da sua conta. Score gerado assim que houver volume suficiente.</p>
         </div>
       </div>
     </div>
 
     <div>
-      <p style="font-size: 14px; color: var(--muted); margin-bottom: 28px; line-height: 1.7;">
-        O score é calculado cruzando as seguintes métricas em relação à média do conjunto de anúncios:
+      <p style="font-size: 13px; font-weight: 600; letter-spacing: 1px; color: var(--muted2); text-transform: uppercase; margin-bottom: 20px;">Métricas usadas no cálculo</p>
+      <p style="font-size: 14px; color: var(--muted); margin-bottom: 20px; line-height: 1.7;">
+        Todas comparadas em relação à <strong style="color: var(--text)">média real do seu conjunto de anúncios</strong> — não a benchmarks externos.
       </p>
-      <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; flex-direction: column; gap: 10px;">
         <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 14px;">Link CTR</span>
-          <span style="font-size: 12px; color: var(--muted);">Taxa de clique no link</span>
+          <span style="font-size: 14px; font-weight: 500;">Link CTR</span>
+          <span style="font-size: 12px; color: var(--muted);">vs. média do adset</span>
         </div>
         <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 14px;">CPL</span>
-          <span style="font-size: 12px; color: var(--muted);">Custo por lead</span>
+          <span style="font-size: 14px; font-weight: 500;">CPL</span>
+          <span style="font-size: 12px; color: var(--muted);">vs. média do adset</span>
         </div>
         <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 14px;">ROAS</span>
-          <span style="font-size: 12px; color: var(--muted);">Retorno sobre o gasto</span>
+          <span style="font-size: 14px; font-weight: 500;">ROAS</span>
+          <span style="font-size: 12px; color: var(--muted);">vs. média do adset</span>
         </div>
         <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 14px;">Hook Rate</span>
-          <span style="font-size: 12px; color: var(--muted);">Retenção dos 3 primeiros segundos</span>
+          <span style="font-size: 14px; font-weight: 500;">Hook Rate</span>
+          <span style="font-size: 12px; color: var(--muted);">retenção nos 3 primeiros segundos</span>
         </div>
         <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 14px;">LP CVR</span>
-          <span style="font-size: 12px; color: var(--muted);">Conversão da landing page</span>
+          <span style="font-size: 14px; font-weight: 500;">LP CVR</span>
+          <span style="font-size: 12px; color: var(--muted);">conversão da landing page</span>
         </div>
+      </div>
+
+      <div style="margin-top: 20px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px; padding: 20px 20px; display: flex; gap: 14px; align-items: flex-start;">
+        <span style="font-size: 18px; flex-shrink: 0;">💡</span>
+        <p style="font-size: 13px; color: var(--muted); line-height: 1.65;">
+          <strong style="color: var(--text)">Por que isso importa?</strong> Um CTR de 1,5% pode ser excelente para uma conta e medíocre para outra. Nosso algoritmo entende o contexto da sua operação e julga cada criativo pelo padrão que a sua própria conta estabelece.
+        </p>
       </div>
     </div>
   </div>
