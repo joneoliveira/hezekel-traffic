@@ -133,7 +133,7 @@ function SegmentEditor({
             />
           </div>
           <div className="flex-1">
-            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide block mb-1">Nome do segmento</label>
+            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide block mb-1">Nome do relatório</label>
             <input
               type="text"
               value={segment.label}
