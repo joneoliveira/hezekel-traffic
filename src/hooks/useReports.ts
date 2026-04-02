@@ -257,112 +257,40 @@ export function useReports() {
     return { error: error?.message ?? null };
   }
 
-  // Generate report
+  // Generate report — calls the report-feed edge function (service role, sem limite de linhas)
   async function generateReport(template: ReportTemplate): Promise<GeneratedReport> {
-    const { since, until } = getDateRange(template.config.date_preset);
-    const adAccountId = activeAccount?.ad_account_id ?? null;
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+    const anonKey     = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
-    const generatedSegments: GeneratedSegment[] = [];
+    const res = await fetch(`${supabaseUrl}/functions/v1/report-feed`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': anonKey,
+        'Authorization': `Bearer ${anonKey}`,
+      },
+      body: JSON.stringify({
+        config:     template.config,
+        account_id: activeAccount?.ad_account_id ?? '',
+      }),
+    });
 
-    for (const segment of template.config.segments) {
-      // Step 1 — find ad_ids that match the campaign filter
-      let creativesQuery = supabase
-        .from('meta_ad_creatives')
-        .select('ad_id');
+    const result = await res.json();
+    if (result.error) throw new Error(result.error);
 
-      if (segment.campaign_contains.trim()) {
-        creativesQuery = creativesQuery.ilike('campaign_name', `%${segment.campaign_contains.trim()}%`);
-      }
-      if (adAccountId) {
-        creativesQuery = (creativesQuery as any).eq('account_id', adAccountId);
-      }
+    const generatedSegments: GeneratedSegment[] = (result.segments ?? []).map((s: any) => ({
+      segment: s.segment,
+      data:    s.data as SegmentData | null,
+      error:   s.error ?? null,
+    }));
 
-      const { data: creatives, error: cErr } = await creativesQuery;
-
-      if (cErr) {
-        generatedSegments.push({ segment, data: null, error: cErr.message });
-        continue;
-      }
-
-      const adIds = (creatives ?? []).map((c: any) => c.ad_id);
-
-      if (adIds.length === 0) {
-        generatedSegments.push({ segment, data: null, error: 'Nenhum anúncio encontrado para este filtro' });
-        continue;
-      }
-
-      // Step 2 — aggregate insights
-      const { data: rows, error: iErr } = await supabase
-        .from('meta_ad_insights')
-        .select([
-          'spend', 'impressions', 'clicks', 'reach',
-          'leads', 'conversions', 'revenue',
-          'link_clicks', 'landing_page_views',
-          'video_thruplay', 'video_3s',
-          'video_p25', 'video_p50', 'video_p75', 'video_p100',
-        ].join(', '))
-        .in('ad_id', adIds)
-        .gte('date_start', since)
-        .lte('date_start', until);
-
-      if (iErr) {
-        generatedSegments.push({ segment, data: null, error: iErr.message });
-        continue;
-      }
-
-      if (!rows || rows.length === 0) {
-        generatedSegments.push({ segment, data: null, error: 'Sem dados para o período selecionado' });
-        continue;
-      }
-
-      // Aggregate sums
-      const agg = (rows as any[]).reduce((acc, row) => {
-        acc.spend              += Number(row.spend)              || 0;
-        acc.impressions        += Number(row.impressions)        || 0;
-        acc.clicks             += Number(row.clicks)             || 0;
-        acc.reach              += Number(row.reach)              || 0;
-        acc.leads              += Number(row.leads)              || 0;
-        acc.conversions        += Number(row.conversions)        || 0;
-        acc.revenue            += Number(row.revenue)            || 0;
-        acc.link_clicks        += Number(row.link_clicks)        || 0;
-        acc.landing_page_views += Number(row.landing_page_views) || 0;
-        acc.video_thruplay     += Number(row.video_thruplay)     || 0;
-        acc.video_3s           += Number(row.video_3s)           || 0;
-        acc.video_p25          += Number(row.video_p25)          || 0;
-        acc.video_p50          += Number(row.video_p50)          || 0;
-        acc.video_p75          += Number(row.video_p75)          || 0;
-        acc.video_p100         += Number(row.video_p100)         || 0;
-        return acc;
-      }, {
-        spend: 0, impressions: 0, clicks: 0, reach: 0,
-        leads: 0, conversions: 0, revenue: 0,
-        link_clicks: 0, landing_page_views: 0,
-        video_thruplay: 0, video_3s: 0,
-        video_p25: 0, video_p50: 0, video_p75: 0, video_p100: 0,
-      });
-
-      // Derived
-      const cpm          = agg.impressions       > 0 ? (agg.spend / agg.impressions) * 1000 : 0;
-      const cpc          = agg.clicks            > 0 ? agg.spend / agg.clicks               : 0;
-      const ctr          = agg.impressions       > 0 ? (agg.clicks / agg.impressions) * 100 : 0;
-      const link_ctr     = agg.impressions       > 0 ? (agg.link_clicks / agg.impressions) * 100 : 0;
-      const frequency    = agg.reach             > 0 ? agg.impressions / agg.reach           : 0;
-      const cpl          = agg.leads             > 0 ? agg.spend / agg.leads                 : 0;
-      const cpa          = agg.conversions       > 0 ? agg.spend / agg.conversions           : 0;
-      const roas         = agg.spend             > 0 ? agg.revenue / agg.spend               : 0;
-      const connect_rate = agg.link_clicks       > 0 ? (agg.landing_page_views / agg.link_clicks) * 100 : 0;
-      const lp_cvr       = agg.landing_page_views > 0 ? (agg.conversions / agg.landing_page_views) * 100 : 0;
-      const hook_rate    = agg.impressions       > 0 ? (agg.video_3s / agg.impressions) * 100 : 0;
-
-      const data: SegmentData = {
-        ...agg, cpm, cpc, ctr, link_ctr, frequency,
-        cpl, cpa, roas, connect_rate, lp_cvr, hook_rate,
-      };
-
-      generatedSegments.push({ segment, data, error: null });
-    }
-
-    return { template, segments: generatedSegments, generatedAt: new Date(), since, until };
+    return {
+      template,
+      segments: generatedSegments,
+      generatedAt: new Date(),
+      since: result.since,
+      until: result.until,
+    };
   }
 
   return {

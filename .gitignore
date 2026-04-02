@@ -29,3 +29,6 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# Cron migration contém service role key — não commitar
+supabase/migrations/016_pg_cron_auto_sync.sql

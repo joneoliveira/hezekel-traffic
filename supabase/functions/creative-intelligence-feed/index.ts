@@ -29,10 +29,12 @@ serve(async (req) => {
     const account_id = url.searchParams.get('account_id') || '';
 
     // Buscar insights agregados (apenas da conta ativa)
+    // .range garante que todos os registros sejam retornados, sem o limite padrão do PostgREST
     let insightsQuery = supabase
       .from('meta_ad_insights')
       .select('*')
-      .gte('date_start', startDate);
+      .gte('date_start', startDate)
+      .range(0, 99999);
     if (account_id) insightsQuery = insightsQuery.eq('account_id', account_id);
     const { data: insights } = await insightsQuery;
 
