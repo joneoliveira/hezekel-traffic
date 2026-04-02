@@ -79,6 +79,6 @@ export function canAccess(role: UserRole | null, page: string): boolean {
   if (role === 'super_admin') return true;
   if (role === 'gestor') return true;
   if (role === 'gestor_trafego') return page !== 'settings';
-  if (role === 'marketing') return page === 'creative' || page === 'content' || page === 'content_intelligence' || page === 'organic_intelligence';
+  if (role === 'marketing') return page === 'creative' || page === 'content' || page === 'content_intelligence' || page === 'organic_intelligence' || page === 'reports';
   return false;
 }

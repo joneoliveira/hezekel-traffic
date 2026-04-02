@@ -12,6 +12,7 @@ import ContentIntelligencePage from './pages/ContentIntelligencePage';
 import OrganicIntelligencePage from './pages/OrganicIntelligencePage';
 import CampanhasPage from './pages/CampanhasPage';
 import AdminPage from './pages/AdminPage';
+import ReportsPage from './pages/ReportsPage';
 import { Loader2 } from 'lucide-react';
 
 function AppWithClient({ effectivePage, onNavigate }: { effectivePage: Page; onNavigate: (p: Page) => void }) {
@@ -27,6 +28,7 @@ function AppWithClient({ effectivePage, onNavigate }: { effectivePage: Page; onN
         {effectivePage === 'organic_intelligence' && <OrganicIntelligencePage />}
         {effectivePage === 'campaigns' && <CampanhasPage />}
         {effectivePage === 'admin' && <AdminPage />}
+        {effectivePage === 'reports' && <ReportsPage />}
       </Layout>
     </AccountProvider>
   );

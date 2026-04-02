@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
-import { Layers, Settings, LayoutDashboard, Menu, ChevronDown, Check, Loader2, Building2, LogOut, Film, Leaf, Briefcase, Megaphone, ShieldCheck } from 'lucide-react';
+import { Layers, Settings, LayoutDashboard, Menu, ChevronDown, Check, Loader2, Building2, LogOut, Film, Leaf, Briefcase, Megaphone, ShieldCheck, FileBarChart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAccountContext } from '@/contexts/AccountContext';
 import { useClientContext } from '@/contexts/ClientContext';
 import { useAuth, canAccess } from '@/contexts/AuthContext';
 
-export type Page = 'dashboard' | 'creative' | 'settings' | 'content' | 'content_intelligence' | 'organic_intelligence' | 'campaigns' | 'admin';
+export type Page = 'dashboard' | 'creative' | 'settings' | 'content' | 'content_intelligence' | 'organic_intelligence' | 'campaigns' | 'admin' | 'reports';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -20,6 +20,7 @@ const NAV_ITEMS: { id: Page; label: string; icon: React.ComponentType<any> }[] =
   { id: 'content_intelligence', label: 'Content Intel. — Paid', icon: Film },
   { id: 'organic_intelligence', label: 'Content Intel. — Organic', icon: Leaf },
   { id: 'content', label: 'Métricas Conteúdo', icon: Building2 },
+  { id: 'reports', label: 'Reports', icon: FileBarChart },
   { id: 'settings', label: 'Configurações', icon: Settings },
   { id: 'admin', label: 'Admin', icon: ShieldCheck },
 ];
