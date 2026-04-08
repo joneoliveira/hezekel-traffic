@@ -50,13 +50,15 @@ serve(async (req) => {
 
     if (bodyAccountId) {
       const { data } = await supabase.from('meta_accounts').select('access_token, ad_account_id').eq('ad_account_id', bodyAccountId).single();
-      accessToken = data?.access_token;
-      adAccountId = data?.ad_account_id;
+      if (data) {
+        adAccountId = data.ad_account_id; // always use matched account ID
+        if (data.access_token) accessToken = data.access_token;
+      }
     }
     if (!accessToken || !adAccountId) {
       const { data: settings } = await supabase.from('app_settings').select('key, value').in('key', ['meta_access_token', 'meta_ad_account_id']);
-      accessToken = settings?.find((r: any) => r.key === 'meta_access_token')?.value;
-      adAccountId = settings?.find((r: any) => r.key === 'meta_ad_account_id')?.value;
+      if (!accessToken) accessToken = settings?.find((r: any) => r.key === 'meta_access_token')?.value;
+      if (!adAccountId) adAccountId = settings?.find((r: any) => r.key === 'meta_ad_account_id')?.value;
     }
     if (!accessToken || !adAccountId) {
       return new Response(JSON.stringify({ error: 'Credenciais do Meta não configuradas.' }), {
@@ -64,8 +66,8 @@ serve(async (req) => {
       });
     }
 
-    const accountTag = adAccountId;
     const accountId = adAccountId.replace('act_', '');
+    const accountTag = `act_${accountId}`; // normalize: always store with act_ prefix
 
     // ── Fetch insights ────────────────────────────────────────────────────────
     const insightFields = [
@@ -77,11 +79,14 @@ serve(async (req) => {
       'video_p50_watched_actions', 'video_p75_watched_actions', 'video_p100_watched_actions',
     ].join(',');
 
-    // Paginate through all insight rows (Meta returns max 500 per page)
+    // Paginate through insight rows (Meta returns max 500 per page)
+    // Cap at 2000 rows to avoid edge function timeout on large accounts
+    const MAX_INSIGHT_ROWS = 2000;
     const insights: any[] = [];
-    let nextUrl: string | null = `${BASE}/act_${accountId}/insights?fields=${insightFields}&date_preset=${date_preset}&time_increment=1&level=ad&limit=500&access_token=${accessToken}`;
+    // No time_increment: returns one aggregated row per ad for the period (much smaller payload)
+    let nextUrl: string | null = `${BASE}/act_${accountId}/insights?fields=${insightFields}&date_preset=${date_preset}&level=ad&limit=500&access_token=${accessToken}`;
 
-    while (nextUrl) {
+    while (nextUrl && insights.length < MAX_INSIGHT_ROWS) {
       const pageData = await fetch(nextUrl).then(r => r.json());
       if (pageData.error) throw new Error(pageData.error.message);
       insights.push(...(pageData.data || []));
@@ -202,9 +207,13 @@ serve(async (req) => {
     let debug_urls_extracted = 0;
     let debug_sample_spec: any = null;
 
+    // Cap creative processing at 200 unique ads to avoid timeout on large accounts
+    const MAX_ADS_TO_PROCESS = 200;
+    const adIdsToProcess = adIdsArr.slice(0, MAX_ADS_TO_PROCESS);
+
     // Process in batches of 50
-    for (let batchStart = 0; batchStart < adIdsArr.length; batchStart += 50) {
-      const batch = adIdsArr.slice(batchStart, batchStart + 50);
+    for (let batchStart = 0; batchStart < adIdsToProcess.length; batchStart += 50) {
+      const batch = adIdsToProcess.slice(batchStart, batchStart + 50);
 
       // ── FIRST batch: ad details + creative ID (no spec — expanded spec is unreliable) ──
       const batchRequests = batch.map((adId: string) => ({
@@ -332,6 +341,17 @@ serve(async (req) => {
     // ── Calculate scores ──────────────────────────────────────────────────────
     await calculateScores(supabase, adIdsArr, accountTag);
 
+    // ── Verify DB: read back a sample row to confirm destination_url was saved ──
+    let debug_db_sample: any = null;
+    if (adIdsArr.length > 0) {
+      const { data: dbSample } = await supabase
+        .from('meta_ad_creatives')
+        .select('ad_id, ad_name, destination_url')
+        .eq('account_id', accountTag)
+        .limit(3);
+      debug_db_sample = dbSample;
+    }
+
     return new Response(JSON.stringify({
       synced_insights_rows,
       unique_ads: adIds.size,
@@ -343,6 +363,7 @@ serve(async (req) => {
         urls_extracted: debug_urls_extracted,
         spec_errors: debug_spec_errors.slice(0, 3),
         sample_spec: debug_sample_spec,
+        db_sample: debug_db_sample,
       },
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 

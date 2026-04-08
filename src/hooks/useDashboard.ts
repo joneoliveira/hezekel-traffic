@@ -35,7 +35,7 @@ export function useDashboard() {
   const [datePreset, setDatePreset] = useState<DatePreset>('last_30d');
   const [since, setSince] = useState(daysAgoStr(30));
   const [until, setUntil] = useState(todayStr());
-  const [campaignFilter, setCampaignFilter] = useState('DCM');
+  const [campaignFilter, setCampaignFilter] = useState('');
 
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
   const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;

@@ -83,6 +83,7 @@ export interface ReportSegment {
 
 export interface ReportConfig {
   date_preset: DatePreset;
+  time?: string;
   segments: ReportSegment[];
 }
 
@@ -151,13 +152,20 @@ export const DATE_PRESET_LABELS: Record<DatePreset, string> = {
 // ── Report text formatter ─────────────────────────────────────────────────────
 
 export function buildReportText(report: GeneratedReport): string {
-  const date = report.generatedAt;
-  const day   = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const hour  = String(date.getHours()).padStart(2, '0');
-  const min   = String(date.getMinutes()).padStart(2, '0');
+  function fmtDate(iso: string) {
+    const d = new Date(iso + 'T12:00:00');
+    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
 
-  const lines: string[] = [`${day}/${month} - ${hour}:${min}`, ''];
+  const isRange = ['last_7d', 'last_30d'].includes(report.template.config.date_preset);
+  const dateLabel = isRange
+    ? `${fmtDate(report.since)} a ${fmtDate(report.until)}`
+    : fmtDate(report.until);
+
+  const configTime = report.template.config.time;
+  const header = configTime ? `${dateLabel} - ${configTime}` : dateLabel;
+
+  const lines: string[] = [header, ''];
 
   for (const gen of report.segments) {
     const seg = gen.segment;

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useDashboard } from '@/hooks/useDashboard';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle, Search, X, Filter, Calendar } from 'lucide-react';
+import { AlertCircle, Search, X, Calendar } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
 } from 'recharts';
@@ -117,7 +117,7 @@ const DATE_PRESETS: { value: string; label: string }[] = [
 ];
 
 export default function DashboardPage() {
-  const { data, loading, error, datePreset, setDatePreset, since, setSince, until, setUntil, campaignFilter, setCampaignFilter } = useDashboard();
+  const { data, loading, error, datePreset, setDatePreset, since, setSince, until, setUntil } = useDashboard();
   const [search, setSearch] = useState('');
 
   if (loading) return (
@@ -163,22 +163,6 @@ export default function DashboardPage() {
           <p className="text-gray-400 text-sm mt-0.5">Performance Meta Ads</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Campaign filter chip */}
-          <div className="flex items-center gap-1.5 h-9 px-3 rounded-md bg-amber-900/20 border border-amber-700/60 text-purple-200 text-sm">
-            <Filter className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-            <span className="text-amber-500 text-xs">campanha contém</span>
-            <input
-              value={campaignFilter}
-              onChange={e => setCampaignFilter(e.target.value)}
-              className="bg-transparent text-white text-sm w-20 focus:outline-none placeholder:text-amber-600"
-              placeholder="ex: DCM"
-            />
-            {campaignFilter && (
-              <button onClick={() => setCampaignFilter('')} className="text-amber-500 hover:text-white ml-1">
-                <X className="w-3 h-3" />
-              </button>
-            )}
-          </div>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-amber-500 pointer-events-none" />
             <input

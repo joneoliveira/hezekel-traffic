@@ -1,4 +1,4 @@
-import { useState, useId } from 'react';
+import { useState, useId, useRef, useEffect } from 'react';
 import { Plus, Trash2, Play, Copy, Check, ChevronDown, ChevronUp, Pencil, Loader2, FileText, AlertCircle, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -81,6 +81,69 @@ function MetricSelector({
   );
 }
 
+// ── Emoji picker ──────────────────────────────────────────────────────────────
+
+const COMMON_EMOJIS = [
+  '🇧🇷','🇺🇸','🇪🇸','🇲🇽','🇦🇷','🇨🇴','🇨🇱','🇵🇹','🇫🇷','🇩🇪',
+  '🇮🇹','🇬🇧','🇯🇵','🇰🇷','🇨🇳','🇦🇺','🇨🇦','🇮🇳','🇷🇺','🌍',
+  '🔥','⚡','🚀','💡','🎯','📊','📈','💰','🛒','🎁',
+  '✅','❌','⭐','💎','👑','🏆','🎪','🌟','💫','🔑',
+  '📱','💻','🖥️','📧','📩','🔔','💬','🗣️','👥','🤝',
+  '❤️','🧡','💛','💚','💙','💜','🖤','🤍','❗','❓',
+];
+
+function EmojiPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full h-[34px] bg-background border border-border rounded-md text-lg flex items-center justify-center hover:border-primary/60 transition-colors focus:outline-none focus:ring-1 focus:ring-primary"
+        title="Escolher emoji"
+      >
+        {value || <span className="text-muted-foreground text-xs">+</span>}
+      </button>
+      {open && (
+        <div className="absolute z-50 top-full mt-1 left-0 bg-popover border border-border rounded-lg shadow-xl p-2 w-56">
+          <div className="grid grid-cols-10 gap-0.5">
+            {COMMON_EMOJIS.map(e => (
+              <button
+                key={e}
+                type="button"
+                onClick={() => { onChange(e); setOpen(false); }}
+                className="w-5 h-5 text-sm flex items-center justify-center rounded hover:bg-muted transition-colors"
+              >
+                {e}
+              </button>
+            ))}
+          </div>
+          {value && (
+            <button
+              type="button"
+              onClick={() => { onChange(''); setOpen(false); }}
+              className="mt-2 w-full text-xs text-muted-foreground hover:text-foreground text-center py-1 hover:bg-muted rounded transition-colors"
+            >
+              Remover emoji
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Segment editor ────────────────────────────────────────────────────────────
 
 function SegmentEditor({
@@ -124,13 +187,7 @@ function SegmentEditor({
         <div className="flex gap-2">
           <div className="w-16">
             <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide block mb-1">Emoji</label>
-            <input
-              type="text"
-              value={segment.emoji}
-              onChange={e => set('emoji', e.target.value)}
-              placeholder="🇧🇷"
-              className="w-full bg-background border border-border rounded-md px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-1 focus:ring-primary"
-            />
+            <EmojiPicker value={segment.emoji} onChange={v => set('emoji', v)} />
           </div>
           <div className="flex-1">
             <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide block mb-1">Nome do relatório</label>
@@ -267,6 +324,19 @@ function TemplateBuilder({
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Time */}
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground block mb-1">
+              Hora <span className="normal-case font-normal">(opcional — aparece no cabeçalho)</span>
+            </label>
+            <input
+              type="time"
+              value={config.time ?? ''}
+              onChange={e => setConfig(c => ({ ...c, time: e.target.value || undefined }))}
+              className="bg-background border border-border rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
+            />
           </div>
 
           {/* Segments */}

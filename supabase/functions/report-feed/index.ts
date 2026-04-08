@@ -23,6 +23,22 @@ serve(async (req) => {
       });
     }
 
+    // ── Sync fresh data before querying ───────────────────────────────────────
+    try {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const serviceKey  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const syncRes = await fetch(`${supabaseUrl}/functions/v1/meta-sync-creative-intelligence`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${serviceKey}`,
+          'apikey': serviceKey,
+        },
+        body: JSON.stringify({ account_id, date_preset: config.date_preset }),
+      });
+      await syncRes.json().catch(() => {}); // consume body to ensure sync completes
+    } catch (_) { /* sync failure is non-fatal — proceed with cached data */ }
+
     // ── Date range ────────────────────────────────────────────────────────────
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];

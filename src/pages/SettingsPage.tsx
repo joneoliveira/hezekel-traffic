@@ -103,17 +103,23 @@ function SyncSection() {
     const logs: { name: string; ok: boolean; msg: string }[] = [];
 
     for (const account of accounts) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120_000); // 2 min max
       try {
         const res = await fetch(`${SUPABASE_URL}/functions/v1/meta-sync-creative-intelligence`, {
           method: 'POST',
           headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ account_id: account.ad_account_id, date_preset: 'last_30d', time_increment: 1 }),
+          signal: controller.signal,
         });
         const data = await res.json();
         if (data.error) throw new Error(data.error);
         logs.push({ name: account.name, ok: true, msg: `${data.synced_insights_rows ?? 0} linhas · ${data.unique_ads ?? 0} ads` });
       } catch (e: any) {
-        logs.push({ name: account.name, ok: false, msg: e.message });
+        const msg = e.name === 'AbortError' ? 'Timeout — conta muito grande, tente novamente' : e.message;
+        logs.push({ name: account.name, ok: false, msg });
+      } finally {
+        clearTimeout(timeoutId);
       }
     }
 

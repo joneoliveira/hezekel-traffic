@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, X, RefreshCw, Loader2, ImageIcon, Copy, ExternalLink, ChevronUp, ChevronDown } from 'lucide-react';
+import { Search, X, RefreshCw, Loader2, ImageIcon, Copy, ExternalLink, ChevronUp, ChevronDown, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -138,7 +138,9 @@ function SortIcon({ field, sortField, sortDir }: { field: SortField; sortField: 
     : <ChevronDown className="w-3 h-3 text-foreground" />;
 }
 
-export default function CampanhasPage() {
+import type { Page } from '@/components/Layout';
+
+export default function CampanhasPage({ onNavigate }: { onNavigate?: (p: Page) => void }) {
   const {
     ads, campaigns, adsets, loading, error,
     selectedCampaign, setSelectedCampaign,
@@ -196,9 +198,16 @@ export default function CampanhasPage() {
           <h1 className="text-2xl font-bold">Campanhas</h1>
           <p className="text-muted-foreground mt-1">Gerencie e duplique seus anúncios</p>
         </div>
-        <Button variant="outline" size="sm" onClick={reload} disabled={loading}>
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-        </Button>
+        <div className="flex items-center gap-2">
+          {onNavigate && (
+            <Button size="sm" onClick={() => onNavigate('create_campaign')}>
+              <Plus className="w-4 h-4 mr-1.5" />Nova campanha
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={reload} disabled={loading}>
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}

@@ -1,4 +1,5 @@
 import { useOrganicIntelligence, type OrganicPost } from '@/hooks/useOrganicIntelligence';
+import { Instagram } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -36,6 +37,7 @@ function mediaTypeIcon(post: OrganicPost) {
 
 export default function OrganicIntelligencePage() {
   const {
+    igAccounts, selectedIgAccountId, setSelectedIgAccountId,
     posts, summary, loading, error, syncing, syncResult,
     since, setSince, until, setUntil,
     selectedStatus, setSelectedStatus,
@@ -59,9 +61,22 @@ export default function OrganicIntelligencePage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold">Content Intelligence — Organic</h1>
-          <p className="text-muted-foreground mt-1">Análise de posts orgânicos · Império Médico</p>
+          <p className="text-muted-foreground mt-1">Análise de posts orgânicos</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {igAccounts.length > 1 && (
+            <Select value={selectedIgAccountId} onValueChange={setSelectedIgAccountId}>
+              <SelectTrigger className="w-[200px] h-9">
+                <Instagram className="w-3.5 h-3.5 text-pink-500 shrink-0 mr-1" />
+                <SelectValue placeholder="Conta Instagram" />
+              </SelectTrigger>
+              <SelectContent>
+                {igAccounts.map(a => (
+                  <SelectItem key={a.ig_account_id} value={a.ig_account_id}>{a.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <div className="flex items-center gap-1.5 bg-card border border-border rounded-md px-3 h-9">
             <Calendar className="w-3.5 h-3.5 text-amber-500 shrink-0" />
             <input type="date" value={since} onChange={e => setSince(e.target.value)}

@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Decode JWT to get caller user ID (no extra API call needed)
+    // Decode JWT to verify caller is super_admin
     const authHeader = req.headers.get('Authorization') ?? '';
     const token = authHeader.replace('Bearer ', '');
     let callerId: string;
@@ -28,40 +28,34 @@ Deno.serve(async (req) => {
       throw new Error('Não autenticado.');
     }
 
-    // Verify caller is super_admin
     const { data: roleRow } = await adminClient
       .from('user_roles')
       .select('role')
       .eq('user_id', callerId)
       .single();
-    if (roleRow?.role !== 'super_admin') throw new Error('Apenas o super admin pode criar usuários.');
+    if (roleRow?.role !== 'super_admin') throw new Error('Acesso negado.');
 
-    const { email, password, role, client_id } = await req.json();
-    if (!email || !password || !role) throw new Error('email, password e role são obrigatórios.');
+    // List all auth users
+    const { data: authData, error: listErr } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
+    if (listErr) throw listErr;
 
-    // Create auth user
-    const { data: created, error: createErr } = await adminClient.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-    });
-    if (createErr) throw createErr;
-
-    // Assign role
-    const { error: roleErr } = await adminClient
+    // Get all roles
+    const { data: roles, error: rolesErr } = await adminClient
       .from('user_roles')
-      .insert({ user_id: created.user.id, role, email });
-    if (roleErr) throw roleErr;
+      .select('user_id, role');
+    if (rolesErr) throw rolesErr;
 
-    // Link to client if provided
-    if (client_id) {
-      const { error: linkErr } = await adminClient
-        .from('client_users')
-        .insert({ client_id, user_id: created.user.id });
-      if (linkErr) throw new Error(`Usuário criado mas erro ao vincular ao cliente: ${linkErr.message}`);
-    }
+    const roleMap: Record<string, string> = {};
+    for (const r of roles ?? []) roleMap[r.user_id] = r.role;
 
-    return new Response(JSON.stringify({ success: true, user_id: created.user.id }), {
+    const users = (authData.users ?? []).map(u => ({
+      id: u.id,
+      email: u.email ?? '',
+      role: roleMap[u.id] ?? 'none',
+      created_at: u.created_at,
+    }));
+
+    return new Response(JSON.stringify({ users }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e: any) {

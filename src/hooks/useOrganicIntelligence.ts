@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useClientContext } from '@/contexts/ClientContext';
 
 export interface OrganicPost {
   id: string;
@@ -24,6 +25,12 @@ export interface OrganicPost {
   engagement_rate: number;
   score: number;
   status: string;
+}
+
+export interface IgAccount {
+  id: string;
+  name: string;
+  ig_account_id: string;
 }
 
 // Scores relative to the average: <50% bad, 50-80% risk, 80-120% good, >120% winner
@@ -54,6 +61,9 @@ function daysAgoStr(n: number) {
 }
 
 export function useOrganicIntelligence() {
+  const { activeClient } = useClientContext();
+  const [igAccounts, setIgAccounts] = useState<IgAccount[]>([]);
+  const [selectedIgAccountId, setSelectedIgAccountId] = useState('');
   const [posts, setPosts] = useState<OrganicPost[]>([]);
   const [followerHistory, setFollowerHistory] = useState<{ date: string; count: number }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,11 +79,30 @@ export function useOrganicIntelligence() {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
   const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
+  // Load IG accounts for the active client whenever it changes
+  useEffect(() => {
+    if (!activeClient?.id) {
+      setIgAccounts([]);
+      setSelectedIgAccountId('');
+      return;
+    }
+    supabase
+      .from('ig_accounts')
+      .select('id, name, ig_account_id')
+      .eq('client_id', activeClient.id)
+      .order('name')
+      .then(({ data }) => {
+        const list = (data as IgAccount[]) ?? [];
+        setIgAccounts(list);
+        setSelectedIgAccountId(list.length > 0 ? list[0].ig_account_id : '');
+      });
+  }, [activeClient?.id]);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: err } = await supabase
+      let query = supabase
         .from('ig_organic_media')
         .select(`
           id, caption, media_type, media_product_type, timestamp, permalink, thumbnail_url, media_url,
@@ -86,6 +115,11 @@ export function useOrganicIntelligence() {
         .lte('timestamp', until + 'T23:59:59Z')
         .order('timestamp', { ascending: false });
 
+      if (selectedIgAccountId) {
+        query = query.eq('ig_account_id', selectedIgAccountId);
+      }
+
+      const { data, error: err } = await query;
       if (err) throw err;
 
       // First pass: extract raw values
@@ -138,11 +172,15 @@ export function useOrganicIntelligence() {
       processed.sort((a, b) => b.score - a.score);
       setPosts(processed);
 
-      // Load follower history
+      // Load follower history for the selected account
+      const historyKey = selectedIgAccountId
+        ? `ig_follower_history_${selectedIgAccountId}`
+        : 'ig_follower_history';
+
       const { data: fhRow } = await supabase
         .from('app_settings')
         .select('value')
-        .eq('key', 'ig_follower_history')
+        .eq('key', historyKey)
         .single();
       try {
         setFollowerHistory(JSON.parse(fhRow?.value || '[]'));
@@ -152,15 +190,19 @@ export function useOrganicIntelligence() {
     } finally {
       setLoading(false);
     }
-  }, [since, until]);
+  }, [since, until, selectedIgAccountId]);
 
   const syncData = useCallback(async () => {
     setSyncing(true);
     setSyncResult(null);
     try {
+      const body: Record<string, string> = {};
+      if (selectedIgAccountId) body.ig_account_id = selectedIgAccountId;
+
       const res = await fetch(`${supabaseUrl}/functions/v1/ig-sync-organic`, {
         method: 'POST',
-        headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
+        headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
       });
       const result = await res.json();
       if (result.error) throw new Error(result.error);
@@ -171,7 +213,7 @@ export function useOrganicIntelligence() {
     } finally {
       setSyncing(false);
     }
-  }, [supabaseUrl, anonKey, fetchData]);
+  }, [supabaseUrl, anonKey, fetchData, selectedIgAccountId]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -196,6 +238,7 @@ export function useOrganicIntelligence() {
   const followersNow = followersUntil;
 
   return {
+    igAccounts, selectedIgAccountId, setSelectedIgAccountId,
     posts: filtered, summary, loading, error, syncing, syncResult,
     since, setSince, until, setUntil,
     followersNow, followersGrowth,
