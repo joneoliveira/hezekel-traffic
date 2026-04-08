@@ -6,24 +6,31 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const GRAPH = 'https://graph.facebook.com/v20.0';
+const GRAPH = 'https://graph.facebook.com/v21.0';
 
-async function graphPost(path: string, token: string, body: Record<string, any>) {
-  const form = new URLSearchParams();
-  form.set('access_token', token);
+// Send as multipart/form-data (same as curl -F), include full Meta error details
+async function graphPost(path: string, token: string, body: Record<string, any>, step?: string) {
+  const form = new FormData();
+  form.append('access_token', token);
   for (const [k, v] of Object.entries(body)) {
-    form.set(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
+    form.append(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
   }
   const res = await fetch(`${GRAPH}${path}`, { method: 'POST', body: form });
   const data = await res.json();
-  if (data.error) throw new Error(`[Meta] ${data.error.message}`);
+  if (data.error) {
+    const detail = data.error.error_user_msg || data.error.error_user_title || data.error.message || 'Erro desconhecido';
+    const subcode = data.error.error_subcode ? ` [sub:${data.error.error_subcode}]` : '';
+    const prefix = step ? `${step}: ` : '';
+    throw new Error(`[Meta] ${prefix}${detail}${subcode}`);
+  }
   return data;
 }
 
-async function uploadImage(accountId: string, token: string, fileName: string, bytes: Uint8Array): Promise<string> {
+async function uploadImage(accountId: string, token: string, fileName: string, bytes: Uint8Array, mimeType: string): Promise<string> {
   const form = new FormData();
   form.append('access_token', token);
-  form.append('filename', new Blob([bytes], { type: 'image/jpeg' }), fileName);
+  // Field name must be the filename (Meta uses it as key in the images response)
+  form.append(fileName, new Blob([bytes.buffer as ArrayBuffer], { type: mimeType }), fileName);
   const res = await fetch(`${GRAPH}/act_${accountId}/adimages`, { method: 'POST', body: form });
   const data = await res.json();
   if (data.error) throw new Error(`[Meta] Upload de imagem falhou: ${data.error.message}`);
@@ -144,7 +151,7 @@ serve(async (req) => {
       status: campaign.status ?? 'PAUSED',
       special_ad_categories: [],
       ...(isCBO ? { daily_budget: Math.round(campaign.daily_budget * 100) } : {}),
-    });
+    }, 'Campanha');
     const campaignId = campaignRes.id;
 
     // ── 2. Create Ad Set ──────────────────────────────────────────────────────
@@ -169,7 +176,7 @@ serve(async (req) => {
       adsetPayload.daily_budget = Math.round((adset.daily_budget ?? 50) * 100);
     }
 
-    const adsetRes = await graphPost(`/act_${accountId}/adsets`, token, adsetPayload);
+    const adsetRes = await graphPost(`/act_${accountId}/adsets`, token, adsetPayload, 'Conjunto');
     const adsetId = adsetRes.id;
 
     // ── 3+4. Create Creative(s) + Ad(s) ──────────────────────────────────────
@@ -214,14 +221,14 @@ serve(async (req) => {
       const creativeRes = await graphPost(`/act_${accountId}/adcreatives`, token, {
         name: `Criativo - ${adName}`,
         object_story_spec: spec,
-      });
+      }, `Criativo "${adName}"`);
 
       const adRes = await graphPost(`/act_${accountId}/ads`, token, {
         name: adName,
         adset_id: adsetId,
         creative: { creative_id: creativeRes.id },
         status: ad?.status ?? 'PAUSED',
-      });
+      }, `Anúncio "${adName}"`);
 
       createdAds.push({ ad_id: adRes.id, creative_id: creativeRes.id, name: adName });
     }
@@ -234,7 +241,7 @@ serve(async (req) => {
           const videoId = await uploadVideo(accountId, token, media.name, media.bytes, media.type);
           await createOneAd(adName, buildSpec('video', videoId));
         } else {
-          const hash = await uploadImage(accountId, token, media.name, media.bytes);
+          const hash = await uploadImage(accountId, token, media.name, media.bytes, media.type);
           await createOneAd(adName, buildSpec('image', hash));
         }
       }
