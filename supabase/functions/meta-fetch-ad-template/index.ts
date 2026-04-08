@@ -69,7 +69,7 @@ serve(async (req) => {
     let targeting: any = null;
     if (adsetId) {
       const adsetRes = await fetch(
-        `${GRAPH}/${adsetId}?fields=targeting,optimization_goal,daily_budget,name,promoted_object&access_token=${token}`
+        `${GRAPH}/${adsetId}?fields=targeting,optimization_goal,daily_budget,name,promoted_object,bid_strategy,bid_amount,bid_constraints&access_token=${token}`
       );
       const adsetData = await adsetRes.json();
       if (!adsetData.error) {
@@ -82,6 +82,9 @@ serve(async (req) => {
           daily_budget: adsetData.daily_budget ? Math.round(adsetData.daily_budget / 100) : null,
           adset_name: adsetData.name ?? null,
           promoted_object: adsetData.promoted_object ?? null,
+          bid_strategy: adsetData.bid_strategy ?? null,
+          bid_amount: adsetData.bid_amount ?? null,
+          bid_constraints: adsetData.bid_constraints ?? null,
         };
       }
     }

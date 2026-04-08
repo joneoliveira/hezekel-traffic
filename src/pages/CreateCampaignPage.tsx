@@ -94,6 +94,9 @@ export default function CreateCampaignPage() {
 
   // ── Ad Set extras ─────────────────────────────────────────────────────────
   const [promotedObject, setPromotedObject] = useState<Record<string, any> | null>(null);
+  const [bidStrategy, setBidStrategy] = useState<string | null>(null);
+  const [bidAmount, setBidAmount] = useState<number | null>(null);
+  const [bidConstraints, setBidConstraints] = useState<Record<string, any> | null>(null);
 
   // ── Ad Creative ───────────────────────────────────────────────────────────
   const [adName, setAdName] = useState('');
@@ -175,6 +178,9 @@ export default function CreateCampaignPage() {
           if (tg.daily_budget) setAdsetBudget(String(tg.daily_budget));
           if (tg.adset_name) setAdsetName(tg.adset_name);
           if (tg.promoted_object) setPromotedObject(tg.promoted_object);
+          setBidStrategy(tg.bid_strategy ?? null);
+          setBidAmount(tg.bid_amount ?? null);
+          setBidConstraints(tg.bid_constraints ?? null);
         }
       }
     } catch {
@@ -238,6 +244,9 @@ export default function CreateCampaignPage() {
           optimization_goal: optimizationGoal,
           ...(!isCBO ? { daily_budget: parseFloat(adsetBudget || '50') } : {}),
           ...(promotedObject ? { promoted_object: promotedObject } : {}),
+          ...(bidStrategy ? { bid_strategy: bidStrategy } : {}),
+          ...(bidAmount ? { bid_amount: bidAmount } : {}),
+          ...(bidConstraints ? { bid_constraints: bidConstraints } : {}),
           countries: [country],
           age_min: parseInt(ageMin),
           age_max: parseInt(ageMax),

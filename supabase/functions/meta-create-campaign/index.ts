@@ -171,6 +171,9 @@ serve(async (req) => {
       targeting,
       ...(adset.start_time ? { start_time: adset.start_time } : {}),
       ...(adset.promoted_object ? { promoted_object: adset.promoted_object } : {}),
+      ...(adset.bid_strategy ? { bid_strategy: adset.bid_strategy } : {}),
+      ...(adset.bid_amount ? { bid_amount: adset.bid_amount } : {}),
+      ...(adset.bid_constraints ? { bid_constraints: adset.bid_constraints } : {}),
     };
     if (!isCBO) {
       adsetPayload.daily_budget = Math.round((adset.daily_budget ?? 50) * 100);
