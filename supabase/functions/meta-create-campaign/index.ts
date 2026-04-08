@@ -33,6 +33,54 @@ async function uploadImage(accountId: string, token: string, fileName: string, b
   return images[firstKey].hash;
 }
 
+async function uploadVideo(accountId: string, token: string, fileName: string, bytes: Uint8Array, mimeType: string): Promise<string> {
+  const endpoint = `${GRAPH}/act_${accountId}/advideos`;
+
+  // Phase 1: Start
+  const startForm = new FormData();
+  startForm.append('access_token', token);
+  startForm.append('upload_phase', 'start');
+  startForm.append('file_size', String(bytes.length));
+  const startData = await fetch(endpoint, { method: 'POST', body: startForm }).then(r => r.json());
+  if (startData.error) throw new Error(`[Meta] Upload de vídeo falhou (start): ${startData.error.message}`);
+  const { upload_session_id, video_id } = startData;
+  let startOffset = parseInt(startData.start_offset ?? '0', 10);
+  let endOffset = parseInt(startData.end_offset ?? String(bytes.length), 10);
+
+  // Phase 2: Transfer chunks
+  while (startOffset !== endOffset) {
+    const chunk = bytes.slice(startOffset, endOffset);
+    const transferForm = new FormData();
+    transferForm.append('access_token', token);
+    transferForm.append('upload_phase', 'transfer');
+    transferForm.append('upload_session_id', upload_session_id);
+    transferForm.append('start_offset', String(startOffset));
+    transferForm.append('end_offset', String(endOffset));
+    transferForm.append('video_file_chunk', new Blob([chunk.buffer as ArrayBuffer], { type: mimeType }), fileName);
+    const transferData = await fetch(endpoint, { method: 'POST', body: transferForm }).then(r => r.json());
+    if (transferData.error) throw new Error(`[Meta] Upload de vídeo falhou (transfer): ${transferData.error.message}`);
+    startOffset = parseInt(transferData.start_offset, 10);
+    endOffset = parseInt(transferData.end_offset, 10);
+  }
+
+  // Phase 3: Finish
+  const finishForm = new FormData();
+  finishForm.append('access_token', token);
+  finishForm.append('upload_phase', 'finish');
+  finishForm.append('upload_session_id', upload_session_id);
+  const finishData = await fetch(endpoint, { method: 'POST', body: finishForm }).then(r => r.json());
+  if (finishData.error) throw new Error(`[Meta] Upload de vídeo falhou (finish): ${finishData.error.message}`);
+
+  // Poll until ready (max 60s)
+  for (let i = 0; i < 12; i++) {
+    await new Promise(r => setTimeout(r, 5000));
+    const s = await fetch(`${GRAPH}/${video_id}?fields=status&access_token=${token}`).then(r => r.json());
+    if (s?.status?.video_status === 'ready') break;
+    if (s?.status?.video_status === 'error') throw new Error('Vídeo retornou erro durante processamento na Meta.');
+  }
+  return video_id;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -44,7 +92,7 @@ serve(async (req) => {
   try {
     const contentType = req.headers.get('content-type') ?? '';
     let params: any;
-    const mediaFiles: { name: string; bytes: Uint8Array }[] = [];
+    const mediaFiles: { name: string; bytes: Uint8Array; type: string }[] = [];
 
     if (contentType.includes('multipart/form-data')) {
       const form = await req.formData();
@@ -53,7 +101,7 @@ serve(async (req) => {
       while (true) {
         const file = form.get(`media_${i}`) as File | null;
         if (!file) break;
-        mediaFiles.push({ name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) });
+        mediaFiles.push({ name: file.name, bytes: new Uint8Array(await file.arrayBuffer()), type: file.type || 'application/octet-stream' });
         i++;
       }
     } else {
@@ -87,7 +135,6 @@ serve(async (req) => {
     if (!token) throw new Error('Token Meta não configurado');
 
     const accountId = account_id.replace('act_', '');
-    // CBO = budget on campaign; ABO = budget on adset. Can't have both.
     const isCBO = !!(campaign.daily_budget);
 
     // ── 1. Create Campaign ────────────────────────────────────────────────────
@@ -118,7 +165,6 @@ serve(async (req) => {
       ...(adset.start_time ? { start_time: adset.start_time } : {}),
       ...(adset.promoted_object ? { promoted_object: adset.promoted_object } : {}),
     };
-    // CBO mode: adset must NOT have daily_budget
     if (!isCBO) {
       adsetPayload.daily_budget = Math.round((adset.daily_budget ?? 50) * 100);
     }
@@ -129,28 +175,45 @@ serve(async (req) => {
     // ── 3+4. Create Creative(s) + Ad(s) ──────────────────────────────────────
     const createdAds: { ad_id: string; creative_id: string; name: string }[] = [];
 
-    const createOneAd = async (adName: string, imageHash?: string) => {
-      if (!creative.page_id) throw new Error('page_id não encontrado. Selecione um anúncio como base para auto-preencher.');
+    // Builds object_story_spec for image or video ad
+    function buildSpec(mediaKind: 'image' | 'video' | 'none', mediaRef?: string): Record<string, any> {
+      const pageId = creative.page_id;
+      const link = creative.link;
+      const ctaType = creative.cta_type ?? 'LEARN_MORE';
 
+      if (mediaKind === 'video') {
+        const videoData: Record<string, any> = {
+          video_id: mediaRef,
+          call_to_action: { type: ctaType, value: { link } },
+        };
+        if (creative.message) videoData.message = creative.message;
+        if (creative.headline) videoData.title = creative.headline;
+        return { page_id: pageId, video_data: videoData };
+      }
+
+      // image or no-media → link_data
       const linkData: Record<string, any> = {
-        link: creative.link,
-        call_to_action: { type: creative.cta_type ?? 'LEARN_MORE', value: { link: creative.link } },
+        link,
+        call_to_action: { type: ctaType, value: { link } },
       };
       if (creative.message) linkData.message = creative.message;
       if (creative.headline) linkData.name = creative.headline;
       if (creative.description) linkData.description = creative.description;
       // Prefer uploaded hash → template hash → image_url (never use CDN URLs from Facebook, they expire)
-      if (imageHash) {
-        linkData.image_hash = imageHash;
+      if (mediaRef) {
+        linkData.image_hash = mediaRef;
       } else if (creative.image_hash) {
         linkData.image_hash = creative.image_hash;
       } else if (creative.image_url) {
         linkData.image_url = creative.image_url;
       }
+      return { page_id: pageId, link_data: linkData };
+    }
 
+    async function createOneAd(adName: string, spec: Record<string, any>) {
       const creativeRes = await graphPost(`/act_${accountId}/adcreatives`, token, {
         name: `Criativo - ${adName}`,
-        object_story_spec: { page_id: creative.page_id, link_data: linkData },
+        object_story_spec: spec,
       });
 
       const adRes = await graphPost(`/act_${accountId}/ads`, token, {
@@ -161,16 +224,22 @@ serve(async (req) => {
       });
 
       createdAds.push({ ad_id: adRes.id, creative_id: creativeRes.id, name: adName });
-    };
+    }
 
     if (mediaFiles.length > 0) {
       for (const media of mediaFiles) {
-        const hash = await uploadImage(accountId, token, media.name, media.bytes);
+        const isVideo = media.type.startsWith('video/');
         const adName = media.name.replace(/\.[^/.]+$/, '');
-        await createOneAd(adName, hash);
+        if (isVideo) {
+          const videoId = await uploadVideo(accountId, token, media.name, media.bytes, media.type);
+          await createOneAd(adName, buildSpec('video', videoId));
+        } else {
+          const hash = await uploadImage(accountId, token, media.name, media.bytes);
+          await createOneAd(adName, buildSpec('image', hash));
+        }
       }
     } else {
-      await createOneAd(ad?.name ?? campaign.name);
+      await createOneAd(ad?.name ?? campaign.name, buildSpec('none'));
     }
 
     return new Response(
