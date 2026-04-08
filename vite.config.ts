@@ -8,9 +8,14 @@ const buildStamp = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMo
 
 let commitCount = '0';
 try {
-  commitCount = execSync('git rev-list --count HEAD', { stdio: ['pipe', 'pipe', 'ignore'] }).toString().trim();
+  const c = execSync('git rev-list --count HEAD', { stdio: ['pipe', 'pipe', 'ignore'] }).toString().trim();
+  if (parseInt(c) > 0) commitCount = c;
 } catch {
   // not a git repo or git unavailable
+}
+// Vercel builds without full git history: derive a stable pseudo-patch from the commit SHA
+if (commitCount === '0' && process.env.VERCEL_GIT_COMMIT_SHA) {
+  commitCount = String(parseInt(process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 8), 16) % 10000);
 }
 
 const majorMinor = process.env.npm_package_version ?? '1.0';
