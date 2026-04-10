@@ -40,7 +40,7 @@ async function uploadImage(accountId: string, token: string, fileName: string, b
   return images[firstKey].hash;
 }
 
-async function uploadVideo(accountId: string, token: string, fileName: string, bytes: Uint8Array, mimeType: string): Promise<string> {
+async function uploadVideo(accountId: string, token: string, fileName: string, bytes: Uint8Array, mimeType: string): Promise<{ id: string; thumbnailUrl: string | null }> {
   const endpoint = `${GRAPH}/act_${accountId}/advideos`;
 
   // Phase 1: Start
@@ -86,7 +86,15 @@ async function uploadVideo(accountId: string, token: string, fileName: string, b
     if (s?.status?.video_status === 'error') throw new Error('Vídeo retornou erro durante processamento na Meta.');
     if (i === 29) throw new Error('Tempo esgotado aguardando processamento do vídeo (150s). Tente com um arquivo menor ou aguarde e tente novamente.');
   }
-  return video_id;
+
+  // Fetch auto-generated thumbnail (required by Meta in video_data)
+  let thumbnailUrl: string | null = null;
+  try {
+    const thumbData = await fetch(`${GRAPH}/${video_id}?fields=picture&access_token=${token}`).then(r => r.json());
+    thumbnailUrl = thumbData.picture ?? null;
+  } catch { /* ignore — will fail at createCreative with clearer error */ }
+
+  return { id: video_id, thumbnailUrl };
 }
 
 serve(async (req) => {
@@ -200,7 +208,7 @@ serve(async (req) => {
     const createdAds: { ad_id: string; creative_id: string; name: string }[] = [];
 
     // Builds object_story_spec for image or video ad
-    function buildSpec(mediaKind: 'image' | 'video' | 'none', mediaRef?: string): Record<string, any> {
+    function buildSpec(mediaKind: 'image' | 'video' | 'none', mediaRef?: string, thumbnailUrl?: string | null): Record<string, any> {
       const pageId = creative.page_id;
       const link = creative.link;
       const ctaType = creative.cta_type ?? 'LEARN_MORE';
@@ -212,6 +220,8 @@ serve(async (req) => {
         };
         if (creative.message) videoData.message = creative.message;
         if (creative.headline) videoData.title = creative.headline;
+        // Meta requires image_url or image_hash as thumbnail in video_data
+        if (thumbnailUrl) videoData.image_url = thumbnailUrl;
         return { page_id: pageId, video_data: videoData };
       }
 
@@ -255,8 +265,8 @@ serve(async (req) => {
         const isVideo = media.type.startsWith('video/');
         const adName = media.name.replace(/\.[^/.]+$/, '');
         if (isVideo) {
-          const videoId = await uploadVideo(accountId, token, media.name, media.bytes, media.type);
-          await createOneAd(adName, buildSpec('video', videoId));
+          const { id: videoId, thumbnailUrl } = await uploadVideo(accountId, token, media.name, media.bytes, media.type);
+          await createOneAd(adName, buildSpec('video', videoId, thumbnailUrl));
         } else {
           const hash = await uploadImage(accountId, token, media.name, media.bytes, media.type);
           await createOneAd(adName, buildSpec('image', hash));

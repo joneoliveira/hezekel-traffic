@@ -82,7 +82,7 @@ async function uploadImage(token: string, adAccountId: string, fileBytes: Uint8A
   return data.images[imageKey] as { hash: string; url: string };
 }
 
-async function uploadVideo(token: string, adAccountId: string, fileBytes: Uint8Array, fileName: string, mimeType: string) {
+async function uploadVideo(token: string, adAccountId: string, fileBytes: Uint8Array, fileName: string, mimeType: string): Promise<{ id: string; thumbnailUrl: string | null }> {
   const accountId = adAccountId.replace(/^act_/, '');
   const endpoint = `${GRAPH_BASE}/act_${accountId}/advideos`;
 
@@ -133,7 +133,15 @@ async function uploadVideo(token: string, adAccountId: string, fileBytes: Uint8A
     if (s?.status?.video_status === 'error') throw new Error('Vídeo retornou erro durante processamento na Meta.');
     if (i === 29) throw new Error('Tempo esgotado aguardando processamento do vídeo pela Meta (150s). Tente com um arquivo menor ou aguarde alguns minutos e tente novamente.');
   }
-  return { id: video_id };
+
+  // Fetch auto-generated thumbnail (required by Meta in video_data)
+  let thumbnailUrl: string | null = null;
+  try {
+    const thumbData = await fetch(`${GRAPH_BASE}/${video_id}?fields=picture&access_token=${token}`).then(r => r.json());
+    thumbnailUrl = thumbData.picture ?? null;
+  } catch { /* ignore */ }
+
+  return { id: video_id, thumbnailUrl };
 }
 
 async function createCreative(
@@ -242,6 +250,7 @@ serve(async (req) => {
       try {
         const hasMedia = !!(mediaFile && mediaFile.size > 0);
         let uploadedVideoId: string | null = null;
+        let uploadedVideoThumbnail: string | null = null;
         let uploadedImageHash: string | null = null;
 
         // Step 1: Upload
@@ -250,8 +259,9 @@ serve(async (req) => {
           controller.enqueue(encode({ type: 'step', step: 1, label: isVideo ? 'Fazendo upload do vídeo...' : 'Fazendo upload da imagem...' }));
           const bytes = new Uint8Array(await mediaFile!.arrayBuffer());
           if (isVideo) {
-            const { id } = await uploadVideo(accessToken, adAccountId, bytes, mediaFile!.name, mediaFile!.type);
+            const { id, thumbnailUrl } = await uploadVideo(accessToken, adAccountId, bytes, mediaFile!.name, mediaFile!.type);
             uploadedVideoId = id;
+            uploadedVideoThumbnail = thumbnailUrl;
           } else {
             const { hash } = await uploadImage(accessToken, adAccountId, bytes, mediaFile!.name, mediaFile!.type);
             uploadedImageHash = hash;
@@ -302,7 +312,15 @@ serve(async (req) => {
             objectStorySpec = {
               page_id: rawSpec.page_id,
               ...(rawSpec.instagram_user_id ? { instagram_user_id: rawSpec.instagram_user_id } : {}),
-              video_data: { video_id: finalVideoId, message, title, call_to_action: { type: ctaType, value: { link: linkUrl } } },
+              video_data: {
+                video_id: finalVideoId,
+                message,
+                title,
+                call_to_action: { type: ctaType, value: { link: linkUrl } },
+                // Meta requires thumbnail; use uploaded thumbnail or fall back to original asset image
+                ...(uploadedVideoThumbnail ? { image_url: uploadedVideoThumbnail }
+                  : assetFeed.images?.[0]?.url ? { image_url: assetFeed.images[0].url } : {}),
+              },
             };
           } else if (finalImageHash) {
             objectStorySpec = {
@@ -318,23 +336,27 @@ serve(async (req) => {
           if (objectStorySpec.link_data) {
             const ld = objectStorySpec.link_data as Obj;
             if (!ld.link) { const ctaLink = ld.call_to_action?.value?.link; if (ctaLink) ld.link = ctaLink; }
-            // Remove CDN URLs that expire
+            // Remove CDN image_url from link_data (expires); image_hash is preserved
             delete ld.image_url;
           }
-          if (objectStorySpec.video_data) {
-            // image_url inside video_data is a CDN URL that expires — always remove it
-            delete objectStorySpec.video_data.image_url;
-          }
+          // Keep video_data.image_url (thumbnail) — Meta requires it and the CDN URL is valid at duplication time
           if (uploadedVideoId) {
             // Replace or set video — remove link_data if switching from image to video
             if (objectStorySpec.video_data) {
               objectStorySpec.video_data.video_id = uploadedVideoId;
+              // Replace thumbnail with the one from the newly uploaded video
+              if (uploadedVideoThumbnail) objectStorySpec.video_data.image_url = uploadedVideoThumbnail;
             } else {
               const ld = objectStorySpec.link_data as Obj | undefined;
               const link = ld?.link || ld?.call_to_action?.value?.link || '';
               const message = ld?.message || '';
               const ctaType = ld?.call_to_action?.type || 'LEARN_MORE';
-              objectStorySpec.video_data = { video_id: uploadedVideoId, message, call_to_action: { type: ctaType, value: { link } } };
+              objectStorySpec.video_data = {
+                video_id: uploadedVideoId,
+                message,
+                call_to_action: { type: ctaType, value: { link } },
+                ...(uploadedVideoThumbnail ? { image_url: uploadedVideoThumbnail } : {}),
+              };
               delete objectStorySpec.link_data;
             }
           } else if (uploadedImageHash) {
