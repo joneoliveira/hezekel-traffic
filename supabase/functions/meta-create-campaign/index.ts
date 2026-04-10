@@ -78,13 +78,13 @@ async function uploadVideo(accountId: string, token: string, fileName: string, b
   const finishData = await fetch(endpoint, { method: 'POST', body: finishForm }).then(r => r.json());
   if (finishData.error) throw new Error(`[Meta] Upload de vídeo falhou (finish): ${finishData.error.message}`);
 
-  // Poll until ready — check immediately first, then every 5s (max 120s total)
-  for (let i = 0; i < 25; i++) {
+  // Poll until ready — every 5s, max 150s
+  for (let i = 0; i < 30; i++) {
+    await new Promise(r => setTimeout(r, 5000));
     const s = await fetch(`${GRAPH}/${video_id}?fields=status&access_token=${token}`).then(r => r.json());
     if (s?.status?.video_status === 'ready') break;
     if (s?.status?.video_status === 'error') throw new Error('Vídeo retornou erro durante processamento na Meta.');
-    if (i === 24) throw new Error('Tempo esgotado aguardando processamento do vídeo (120s). Tente com um arquivo menor ou aguarde e tente novamente.');
-    await new Promise(r => setTimeout(r, 5000));
+    if (i === 29) throw new Error('Tempo esgotado aguardando processamento do vídeo (150s). Tente com um arquivo menor ou aguarde e tente novamente.');
   }
 
   // Fetch auto-generated thumbnail (required by Meta in video_data)

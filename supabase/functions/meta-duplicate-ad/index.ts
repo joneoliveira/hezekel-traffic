@@ -121,17 +121,17 @@ async function uploadVideo(token: string, adAccountId: string, fileBytes: Uint8A
   const finishData = await fetch(endpoint, { method: 'POST', body: finishForm }).then(r => r.json());
   throwIfMetaError('uploadVideo:finish', finishData);
 
-  // Poll until ready — check immediately first, then every 5s (max 120s total)
+  // Poll until ready — every 5s, max 150s
   const statusUrl = new URL(`${GRAPH_BASE}/${video_id}`);
   statusUrl.searchParams.set('fields', 'status');
   statusUrl.searchParams.set('access_token', token);
-  for (let i = 0; i < 25; i++) {
+  for (let i = 0; i < 30; i++) {
+    await new Promise(r => setTimeout(r, 5000));
     const s = await fetch(statusUrl.toString()).then(r => r.json());
     throwIfMetaError('uploadVideo:poll', s);
     if (s?.status?.video_status === 'ready') break;
     if (s?.status?.video_status === 'error') throw new Error('Vídeo retornou erro durante processamento na Meta.');
-    if (i === 24) throw new Error('Tempo esgotado aguardando processamento do vídeo pela Meta (120s). Tente com um arquivo menor ou aguarde alguns minutos e tente novamente.');
-    await new Promise(r => setTimeout(r, 5000));
+    if (i === 29) throw new Error('Tempo esgotado aguardando processamento do vídeo (150s). Tente com um arquivo menor ou aguarde alguns minutos e tente novamente.');
   }
 
   // Fetch auto-generated thumbnail (required by Meta in video_data)
