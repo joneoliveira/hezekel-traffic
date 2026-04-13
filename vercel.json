@@ -1,6 +1,6 @@
 {
   "routes": [
-    { "src": "/", "dest": "/landing.html" },
+    { "src": "/", "dest": "/landing-v2.html" },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
