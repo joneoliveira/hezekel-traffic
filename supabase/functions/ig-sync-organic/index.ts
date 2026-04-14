@@ -99,8 +99,18 @@ serve(async (req) => {
           synced_at: new Date().toISOString(),
         }, { onConflict: 'id' });
 
+        const isReel = media.media_product_type === 'REELS';
+        const isVideo = media.media_type === 'VIDEO';
+
+        // Metrics vary by media type — mixing reel-only metrics into a feed/image
+        // request causes the entire insights call to fail with an API error.
+        const baseMetrics = 'reach,likes,comments,shares,saved,total_interactions';
+        const reelMetrics = `${baseMetrics},ig_reels_avg_watch_time,ig_reels_video_view_total_time`;
+        const videoMetrics = baseMetrics;
+        const metrics = isReel ? reelMetrics : isVideo ? videoMetrics : baseMetrics;
+
         const insightsRes = await fetchJson(
-          `${GRAPH_BASE}/${media.id}/insights?metric=reach,views,likes,comments,shares,saved,total_interactions,ig_reels_avg_watch_time,ig_reels_video_view_total_time&period=lifetime&access_token=${accessToken}`
+          `${GRAPH_BASE}/${media.id}/insights?metric=${metrics}&period=lifetime&access_token=${accessToken}`
         );
 
         if (!insightsRes.error && insightsRes.data) {
@@ -110,14 +120,14 @@ serve(async (req) => {
           await supabase.from('ig_organic_insights').upsert({
             media_id: media.id,
             reach: getValue('reach'),
-            views: getValue('views'),
+            views: 0,
             likes: getValue('likes'),
             comments: getValue('comments'),
             shares: getValue('shares'),
             saved: getValue('saved'),
             total_interactions: getValue('total_interactions'),
-            avg_watch_time_ms: getValue('ig_reels_avg_watch_time'),
-            total_watch_time_ms: getValue('ig_reels_video_view_total_time'),
+            avg_watch_time_ms: isReel ? getValue('ig_reels_avg_watch_time') : 0,
+            total_watch_time_ms: isReel ? getValue('ig_reels_video_view_total_time') : 0,
             synced_at: new Date().toISOString(),
           }, { onConflict: 'media_id' });
         }
