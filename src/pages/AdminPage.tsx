@@ -212,7 +212,7 @@ function AddAccountInline({ clientId, onAdded }: { clientId: string; onAdded: ()
         />
       )}
       {msg && (
-        <div className={`flex items-center gap-1.5 text-xs p-2 rounded border ${msgOk ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+        <div className={`flex items-center gap-1.5 text-xs p-2 rounded border ${msgOk ? 'bg-emerald-950/50 border-emerald-700/40 text-emerald-400' : 'bg-red-950/50 border-red-800/40 text-red-400'}`}>
           {msgOk ? <CheckCircle2 className="w-3 h-3 shrink-0" /> : <AlertCircle className="w-3 h-3 shrink-0" />}
           {msg}
         </div>
@@ -390,7 +390,7 @@ function AddIgAccountInline({ clientId, onAdded }: { clientId: string; onAdded: 
       )}
 
       {msg && (
-        <div className={`flex items-center gap-1.5 text-xs p-2 rounded border ${msgOk ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+        <div className={`flex items-center gap-1.5 text-xs p-2 rounded border ${msgOk ? 'bg-emerald-950/50 border-emerald-700/40 text-emerald-400' : 'bg-red-950/50 border-red-800/40 text-red-400'}`}>
           {msgOk ? <CheckCircle2 className="w-3 h-3 shrink-0" /> : <AlertCircle className="w-3 h-3 shrink-0" />}
           {msg}
         </div>
@@ -521,7 +521,7 @@ function AddUserToClient({
       )}
 
       {msg && (
-        <div className={`flex items-center gap-1.5 text-xs p-2 rounded border ${msgOk ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+        <div className={`flex items-center gap-1.5 text-xs p-2 rounded border ${msgOk ? 'bg-emerald-950/50 border-emerald-700/40 text-emerald-400' : 'bg-red-950/50 border-red-800/40 text-red-400'}`}>
           {msgOk ? <CheckCircle2 className="w-3 h-3 shrink-0" /> : <AlertCircle className="w-3 h-3 shrink-0" />}
           {msg}
         </div>
@@ -897,7 +897,7 @@ export default function AdminPage() {
       </div>
 
       {loadError && (
-        <div className="flex items-start gap-2 p-3 rounded-lg border border-red-300 bg-red-50 text-red-800 text-sm">
+        <div className="flex items-start gap-2 p-3 rounded-lg border border-red-800/40 bg-red-950/50 text-red-400 text-sm">
           <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="font-semibold">Erro ao carregar dados</p>

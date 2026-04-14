@@ -352,25 +352,25 @@ export default function Layout({ children }: LayoutProps) {
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <aside className={cn(
-          'flex flex-col border-r bg-card transition-all duration-200 shrink-0',
+          'flex flex-col border-r border-border bg-gradient-to-b from-card to-background transition-all duration-200 shrink-0',
           sidebarOpen ? 'w-52' : 'w-0 overflow-hidden border-r-0'
         )}>
           <nav className="flex-1 py-3 space-y-0.5 px-2">
             {visibleNav.map(item => (
               <button key={item.id} onClick={() => navigate(PAGE_TO_PATH[item.id])}
                 className={cn(
-                  'w-full flex items-center gap-3 px-2 py-2 rounded-md text-sm transition-colors',
+                  'w-full flex items-center gap-3 px-2 py-2 rounded-md text-sm transition-all duration-150',
                   currentPage === item.id
-                    ? 'bg-primary text-primary-foreground'
+                    ? 'bg-primary text-primary-foreground shadow-[0_0_14px_rgba(245,158,11,0.22)]'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 )}>
-                <item.icon className="w-4 h-4 shrink-0" />
+                <item.icon className={cn('w-4 h-4 shrink-0', currentPage === item.id && 'drop-shadow-[0_0_4px_rgba(245,158,11,0.6)]')} />
                 <span className="truncate">{item.label}</span>
               </button>
             ))}
           </nav>
           <div className="px-4 py-3 border-t border-border">
-            <p className="text-[11px] text-muted-foreground/50 font-mono">v{__APP_VERSION__}</p>
+            <p className="text-[11px] text-amber-600/50 font-mono">v{__APP_VERSION__}</p>
           </div>
         </aside>
 

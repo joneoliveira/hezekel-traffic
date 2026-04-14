@@ -125,7 +125,7 @@ function StatusBadge({ ad }: { ad: AdRow }) {
   if (!hasStatus) return null;
   return (
     <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border whitespace-nowrap ${
-      active ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-muted-foreground bg-muted border-border'
+      active ? 'text-emerald-400 bg-emerald-950/50 border-emerald-700/40' : 'text-muted-foreground bg-muted border-border'
     }`}>
       {active ? 'Ativo' : 'Inativo'}
     </span>
@@ -277,7 +277,7 @@ export default function CampanhasPage() {
       </div>
 
       {error && (
-        <div className="p-3 rounded-lg bg-red-50 text-red-800 border border-red-200 text-sm">{error}</div>
+        <div className="p-3 rounded-lg bg-red-950/50 text-red-400 border border-red-800/40 text-sm">{error}</div>
       )}
 
       {/* Table */}

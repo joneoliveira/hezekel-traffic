@@ -12,11 +12,11 @@ import {
 } from 'lucide-react';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: React.ComponentType<any> }> = {
-  Winner:   { label: 'Winner',   color: 'text-emerald-700', bgColor: 'bg-emerald-50 border-emerald-200', icon: Trophy },
-  Good:     { label: 'Good',     color: 'text-blue-700',    bgColor: 'bg-blue-50 border-blue-200',       icon: ThumbsUp },
-  Risk:     { label: 'Risk',     color: 'text-amber-700',   bgColor: 'bg-amber-50 border-amber-200',     icon: AlertTriangle },
-  Bad:      { label: 'Bad',      color: 'text-red-700',     bgColor: 'bg-red-50 border-red-200',         icon: XCircle },
-  Learning: { label: 'Learning', color: 'text-muted-foreground', bgColor: 'bg-muted border-border',      icon: GraduationCap },
+  Winner:   { label: 'Winner',   color: 'text-emerald-400', bgColor: 'bg-emerald-950/60 border-emerald-700/40', icon: Trophy },
+  Good:     { label: 'Good',     color: 'text-blue-400',    bgColor: 'bg-blue-950/60 border-blue-700/40',       icon: ThumbsUp },
+  Risk:     { label: 'Risk',     color: 'text-amber-400',   bgColor: 'bg-amber-950/60 border-amber-700/40',     icon: AlertTriangle },
+  Bad:      { label: 'Bad',      color: 'text-red-400',     bgColor: 'bg-red-950/60 border-red-700/40',         icon: XCircle },
+  Learning: { label: 'Learning', color: 'text-muted-foreground', bgColor: 'bg-muted border-border',             icon: GraduationCap },
 };
 
 const fmtPct = (v: number) => `${v.toFixed(1)}%`;
@@ -48,10 +48,10 @@ export default function OrganicIntelligencePage() {
   } = useOrganicIntelligence();
 
   const summaryCards = [
-    { key: 'Winner',   icon: Trophy,        count: summary.Winner,   color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { key: 'Good',     icon: ThumbsUp,      count: summary.Good,     color: 'text-blue-600',    bg: 'bg-blue-50' },
-    { key: 'Risk',     icon: AlertTriangle, count: summary.Risk,     color: 'text-amber-600',   bg: 'bg-amber-50' },
-    { key: 'Bad',      icon: XCircle,       count: summary.Bad,      color: 'text-red-600',     bg: 'bg-red-50' },
+    { key: 'Winner',   icon: Trophy,        count: summary.Winner,   color: 'text-emerald-400', bg: 'bg-emerald-950/40' },
+    { key: 'Good',     icon: ThumbsUp,      count: summary.Good,     color: 'text-blue-400',    bg: 'bg-blue-950/40' },
+    { key: 'Risk',     icon: AlertTriangle, count: summary.Risk,     color: 'text-amber-400',   bg: 'bg-amber-950/40' },
+    { key: 'Bad',      icon: XCircle,       count: summary.Bad,      color: 'text-red-400',     bg: 'bg-red-950/40' },
     { key: 'Learning', icon: GraduationCap, count: summary.Learning, color: 'text-muted-foreground', bg: 'bg-muted' },
   ];
 
@@ -178,7 +178,7 @@ export default function OrganicIntelligencePage() {
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 text-red-800 border border-red-200 text-sm">
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-red-950/50 text-red-400 border border-red-800/40 text-sm">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />{error}
         </div>
       )}
