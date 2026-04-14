@@ -9,12 +9,12 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const adminClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    );
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+    const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-    // Decode JWT to get caller user ID (no extra API call needed)
+    const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+
+    // Decode JWT to get caller user ID
     const authHeader = req.headers.get('Authorization') ?? '';
     const token = authHeader.replace('Bearer ', '');
     let callerId: string;
@@ -39,28 +39,56 @@ Deno.serve(async (req) => {
     const { email, password, role, client_id } = await req.json();
     if (!email || !password || !role) throw new Error('email, password e role são obrigatórios.');
 
-    // Create auth user — if email already exists, look up and reuse
+    // Create auth user via direct REST call (avoids supabase-js auth.admin issues in Deno)
     let userId: string;
-    const { data: created, error: createErr } = await adminClient.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
+    const authHeaders = {
+      'Content-Type': 'application/json',
+      'apikey': SERVICE_ROLE_KEY,
+      'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+    };
+
+    const createRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({ email, password, email_confirm: true }),
     });
 
-    if (createErr) {
-      // Email already registered: find the existing user and proceed
-      if (createErr.message?.toLowerCase().includes('already been registered') ||
-          createErr.message?.toLowerCase().includes('already registered') ||
-          createErr.status === 422) {
-        const { data: listData } = await adminClient.auth.admin.listUsers();
-        const existing = listData?.users?.find((u: any) => u.email === email);
-        if (!existing) throw new Error(`Email já registrado mas não encontrado: ${createErr.message}`);
-        userId = existing.id;
+    const createData = await createRes.json();
+
+    if (!createRes.ok) {
+      // Check if email is already registered (status 422 or error code/message)
+      const isAlreadyRegistered =
+        createRes.status === 422 ||
+        createData?.msg?.toLowerCase().includes('already registered') ||
+        createData?.message?.toLowerCase().includes('already registered') ||
+        createData?.code === 'email_exists';
+
+      if (isAlreadyRegistered) {
+        // Look up existing user_id from user_roles table by email
+        const { data: existingRole } = await adminClient
+          .from('user_roles')
+          .select('user_id')
+          .eq('email', email)
+          .maybeSingle();
+
+        if (existingRole?.user_id) {
+          userId = existingRole.user_id;
+        } else {
+          // Not in user_roles — find via Auth Admin list
+          const listRes = await fetch(
+            `${SUPABASE_URL}/auth/v1/admin/users?page=1&per_page=1000`,
+            { headers: authHeaders }
+          );
+          const listData = await listRes.json();
+          const existing = (listData?.users ?? []).find((u: any) => u.email === email);
+          if (!existing) throw new Error(`Email já registrado mas usuário não encontrado. Erro original: ${createData?.msg ?? createData?.message}`);
+          userId = existing.id;
+        }
       } else {
-        throw createErr;
+        throw new Error(createData?.msg ?? createData?.message ?? `Erro ao criar usuário (${createRes.status})`);
       }
     } else {
-      userId = created.user.id;
+      userId = createData.id;
     }
 
     // Assign role (upsert to handle re-runs)
