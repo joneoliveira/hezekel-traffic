@@ -61,7 +61,7 @@ function AppRoutes() {
     );
   }
 
-  const fallback = role === 'marketing' ? '/content-intel' : '/dashboard';
+  const fallback = (role === 'marketing' || role === 'social_media') ? '/content-intel' : '/dashboard';
   const page = PATH_TO_PAGE[location.pathname];
 
   // Redirect if current page is not accessible for this role
