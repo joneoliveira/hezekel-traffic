@@ -54,7 +54,7 @@ function computeStatus(score: number, timestamp: string | null): string {
   }
   if (score >= 75) return 'Winner';
   if (score >= 55) return 'Good';
-  if (score >= 35) return 'Risk';
+  if (score >= 35) return 'Average';
   return 'Bad';
 }
 
@@ -102,6 +102,13 @@ export function useOrganicIntelligence() {
   }, [activeClient?.id]);
 
   const fetchData = useCallback(async () => {
+    // Guard: never fetch without a specific account — prevents cross-client data exposure
+    if (!activeClient?.id || !selectedIgAccountId) {
+      setPosts([]);
+      setFollowerHistory([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -193,7 +200,7 @@ export function useOrganicIntelligence() {
     } finally {
       setLoading(false);
     }
-  }, [since, until, selectedIgAccountId]);
+  }, [since, until, selectedIgAccountId, activeClient?.id]);
 
   const syncData = useCallback(async () => {
     setSyncing(true);
@@ -223,7 +230,7 @@ export function useOrganicIntelligence() {
   const summary = {
     Winner: posts.filter(p => p.status === 'Winner').length,
     Good: posts.filter(p => p.status === 'Good').length,
-    Risk: posts.filter(p => p.status === 'Risk').length,
+    Average: posts.filter(p => p.status === 'Average').length,
     Bad: posts.filter(p => p.status === 'Bad').length,
     Learning: posts.filter(p => p.status === 'Learning').length,
   };

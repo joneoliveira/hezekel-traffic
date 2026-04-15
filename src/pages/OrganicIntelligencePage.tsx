@@ -14,7 +14,7 @@ import {
 const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: React.ComponentType<any> }> = {
   Winner:   { label: 'Winner',   color: 'text-emerald-400', bgColor: 'bg-emerald-950/60 border-emerald-700/40', icon: Trophy },
   Good:     { label: 'Good',     color: 'text-blue-400',    bgColor: 'bg-blue-950/60 border-blue-700/40',       icon: ThumbsUp },
-  Risk:     { label: 'Risk',     color: 'text-amber-400',   bgColor: 'bg-amber-950/60 border-amber-700/40',     icon: AlertTriangle },
+  Average:     { label: 'Average',     color: 'text-amber-400',   bgColor: 'bg-amber-950/60 border-amber-700/40',     icon: AlertTriangle },
   Bad:      { label: 'Bad',      color: 'text-red-400',     bgColor: 'bg-red-950/60 border-red-700/40',         icon: XCircle },
   Learning: { label: 'Learning', color: 'text-muted-foreground', bgColor: 'bg-muted border-border',             icon: GraduationCap },
 };
@@ -50,7 +50,7 @@ export default function OrganicIntelligencePage() {
   const summaryCards = [
     { key: 'Winner',   icon: Trophy,        count: summary.Winner,   color: 'text-emerald-400', bg: 'bg-emerald-950/40' },
     { key: 'Good',     icon: ThumbsUp,      count: summary.Good,     color: 'text-blue-400',    bg: 'bg-blue-950/40' },
-    { key: 'Risk',     icon: AlertTriangle, count: summary.Risk,     color: 'text-amber-400',   bg: 'bg-amber-950/40' },
+    { key: 'Average',     icon: AlertTriangle, count: summary.Average,     color: 'text-amber-400',   bg: 'bg-amber-950/40' },
     { key: 'Bad',      icon: XCircle,       count: summary.Bad,      color: 'text-red-400',     bg: 'bg-red-950/40' },
     { key: 'Learning', icon: GraduationCap, count: summary.Learning, color: 'text-muted-foreground', bg: 'bg-muted' },
   ];

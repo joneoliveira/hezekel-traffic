@@ -361,16 +361,16 @@ export default function Layout({ children }: LayoutProps) {
                 className={cn(
                   'w-full flex items-center gap-3 px-2 py-2 rounded-md text-sm transition-all duration-150',
                   currentPage === item.id
-                    ? 'bg-primary text-primary-foreground shadow-[0_0_14px_rgba(245,158,11,0.22)]'
+                    ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 )}>
-                <item.icon className={cn('w-4 h-4 shrink-0', currentPage === item.id && 'drop-shadow-[0_0_4px_rgba(245,158,11,0.6)]')} />
+                <item.icon className="w-4 h-4 shrink-0" />
                 <span className="truncate">{item.label}</span>
               </button>
             ))}
           </nav>
           <div className="px-4 py-3 border-t border-border">
-            <p className="text-[11px] text-amber-600/50 font-mono">v{__APP_VERSION__}</p>
+            <p className="text-[11px] text-muted-foreground/60 font-mono">v{__APP_VERSION__}</p>
           </div>
         </aside>
 

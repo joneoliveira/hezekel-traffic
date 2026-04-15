@@ -77,6 +77,7 @@ Storage bucket: `avatars` (fotos de perfil dos usuários)
 - `gestor` — acesso a todas as páginas
 - `gestor_trafego` — todas as páginas exceto Configurações
 - `marketing` — apenas: Creative Intelligence, Content Intelligence (Paid), Content Intel. Organic, Métricas Conteúdo, Reports
+- `social_media` — apenas: Content Intelligence (Paid), Content Intel. Organic
 
 Lógica em `src/contexts/AuthContext.tsx` → função `canAccess()`.
 
@@ -183,6 +184,7 @@ Regras de bump:
 | 020 | ig_accounts table |
 | 021 | RLS ig_organic by client |
 | 022 | Fix health account_id |
+| 023 | social_media role + user_roles RLS restrita |
 
 ## Estrutura de arquivos chave
 ```
