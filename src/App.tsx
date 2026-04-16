@@ -41,7 +41,7 @@ function ClientRoutes({ fallback }: { fallback: string }) {
 }
 
 function AppRoutes() {
-  const { user, role, loading } = useAuth();
+  const { user, role, loading, isPasswordRecovery } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -49,6 +49,14 @@ function AppRoutes() {
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
+    );
+  }
+
+  if (isPasswordRecovery) {
+    return (
+      <Routes>
+        <Route path="*" element={<LoginPage />} />
+      </Routes>
     );
   }
 

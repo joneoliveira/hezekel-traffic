@@ -39,29 +39,19 @@ Deno.serve(async (req) => {
     const { email, password, role, client_id } = await req.json();
     if (!email || !password || !role) throw new Error('email, password e role são obrigatórios.');
 
-    // Create auth user via direct REST call (avoids supabase-js auth.admin issues in Deno)
+    // Create auth user via supabase-js admin API (handles ES256/HS256 transparently)
     let userId: string;
-    const authHeaders = {
-      'Content-Type': 'application/json',
-      'apikey': SERVICE_ROLE_KEY,
-      'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
-    };
-
-    const createRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
-      method: 'POST',
-      headers: authHeaders,
-      body: JSON.stringify({ email, password, email_confirm: true }),
+    const { data: createData, error: createError } = await adminClient.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
     });
 
-    const createData = await createRes.json();
-
-    if (!createRes.ok) {
-      // Check if email is already registered (status 422 or error code/message)
+    if (createError) {
       const isAlreadyRegistered =
-        createRes.status === 422 ||
-        createData?.msg?.toLowerCase().includes('already registered') ||
-        createData?.message?.toLowerCase().includes('already registered') ||
-        createData?.code === 'email_exists';
+        createError.message?.toLowerCase().includes('already registered') ||
+        createError.message?.toLowerCase().includes('already been registered') ||
+        (createError as any).code === 'email_exists';
 
       if (isAlreadyRegistered) {
         // Look up existing user_id from user_roles table by email
@@ -74,21 +64,17 @@ Deno.serve(async (req) => {
         if (existingRole?.user_id) {
           userId = existingRole.user_id;
         } else {
-          // Not in user_roles — find via Auth Admin list
-          const listRes = await fetch(
-            `${SUPABASE_URL}/auth/v1/admin/users?page=1&per_page=1000`,
-            { headers: authHeaders }
-          );
-          const listData = await listRes.json();
+          // Not in user_roles — find via admin list
+          const { data: listData } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
           const existing = (listData?.users ?? []).find((u: any) => u.email === email);
-          if (!existing) throw new Error(`Email já registrado mas usuário não encontrado. Erro original: ${createData?.msg ?? createData?.message}`);
+          if (!existing) throw new Error(`Email já registrado mas usuário não encontrado. Erro original: ${createError.message}`);
           userId = existing.id;
         }
       } else {
-        throw new Error(createData?.msg ?? createData?.message ?? `Erro ao criar usuário (${createRes.status})`);
+        throw createError;
       }
     } else {
-      userId = createData.id;
+      userId = createData.user.id;
     }
 
     // Assign role (upsert to handle re-runs)
@@ -105,6 +91,17 @@ Deno.serve(async (req) => {
       if (linkErr && !linkErr.message?.includes('duplicate') && !linkErr.code?.includes('23505')) {
         throw new Error(`Usuário criado mas erro ao vincular ao cliente: ${linkErr.message}`);
       }
+    }
+
+    // Envia email de redefinição de senha para o novo usuário (não bloqueia se falhar)
+    try {
+      await adminClient.auth.admin.generateLink({
+        type: 'recovery',
+        email,
+        options: { redirectTo: 'https://hezekel.com/login' },
+      });
+    } catch {
+      // Email falhou — usuário foi criado normalmente
     }
 
     return new Response(JSON.stringify({ success: true, user_id: userId }), {
