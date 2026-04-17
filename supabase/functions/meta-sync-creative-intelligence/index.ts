@@ -80,11 +80,11 @@ serve(async (req) => {
     ].join(',');
 
     // Paginate through insight rows (Meta returns max 500 per page)
-    // Cap at 2000 rows to avoid edge function timeout on large accounts
-    const MAX_INSIGHT_ROWS = 2000;
+    // Cap at 10000 rows to support daily breakdown over 30 days × many ads
+    const MAX_INSIGHT_ROWS = 10000;
     const insights: any[] = [];
-    // No time_increment: returns one aggregated row per ad for the period (much smaller payload)
-    let nextUrl: string | null = `${BASE}/act_${accountId}/insights?fields=${insightFields}&date_preset=${date_preset}&level=ad&limit=500&access_token=${accessToken}`;
+    // time_increment=1: one row per ad per day — required for correct daily data in DB
+    let nextUrl: string | null = `${BASE}/act_${accountId}/insights?fields=${insightFields}&date_preset=${date_preset}&level=ad&time_increment=1&limit=500&access_token=${accessToken}`;
 
     while (nextUrl && insights.length < MAX_INSIGHT_ROWS) {
       const pageData = await fetch(nextUrl).then(r => r.json());
