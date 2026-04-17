@@ -38,7 +38,7 @@ O app usa `BrowserRouter` com rotas declaradas em `src/App.tsx`. O `vercel.json`
 |---|---|---|
 | `/` | `landing.html` (estático) | público |
 | `/login` | `LoginPage` | público |
-| `/dashboard` | `DashboardPage` | todos exceto marketing |
+| `/dashboard` | `DashboardPage` | todos exceto marketing (social_media liberado) |
 | `/campanhas` | `CampanhasPage` | todos exceto marketing |
 | `/campanhas/criar` | `CreateCampaignPage` | todos exceto marketing |
 | `/creative` | `CreativeIntelligencePage` | todos |
@@ -77,7 +77,7 @@ Storage bucket: `avatars` (fotos de perfil dos usuários)
 - `gestor` — acesso a todas as páginas
 - `gestor_trafego` — todas as páginas exceto Configurações
 - `marketing` — apenas: Creative Intelligence, Content Intelligence (Paid), Content Intel. Organic, Métricas Conteúdo, Reports
-- `social_media` — apenas: Content Intelligence (Paid), Content Intel. Organic
+- `social_media` — apenas: Dashboard, Content Intelligence (Paid), Content Intel. Organic
 
 Lógica em `src/contexts/AuthContext.tsx` → função `canAccess()`.
 
