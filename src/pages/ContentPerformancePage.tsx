@@ -67,7 +67,7 @@ export default function ContentPerformancePage() {
                 value={filterInput}
                 onChange={e => setFilterInput(e.target.value)}
                 placeholder="Filtrar campanha..."
-                className="h-9 w-44 rounded-md border border-input bg-background text-xs pl-8 pr-2 focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
+                className="h-9 w-44 rounded-md border border-input bg-background text-xs text-foreground pl-8 pr-2 focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
               />
             </div>
             {filterInput !== campaignFilter && (

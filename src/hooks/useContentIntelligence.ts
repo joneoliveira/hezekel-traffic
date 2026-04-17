@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useAccountContext } from '@/contexts/AccountContext';
 
 export interface ContentIntelligenceAd {
   ad_id: string;
@@ -56,6 +57,7 @@ function computeStatus(score: number, spend: number): string {
 }
 
 export function useContentIntelligence() {
+  const { activeAccount } = useAccountContext();
   const [ads, setAds] = useState<ContentIntelligenceAd[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,6 +82,7 @@ export function useContentIntelligence() {
     setError(null);
     try {
       const params = new URLSearchParams({ since, until });
+      if (activeAccount?.ad_account_id) params.set('account_id', activeAccount.ad_account_id);
       if (campaignFilter.trim()) params.set('campaign_contains', campaignFilter.trim());
       const res = await fetch(`${supabaseUrl}/functions/v1/content-performance-feed?${params}`, {
         headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
@@ -138,7 +141,7 @@ export function useContentIntelligence() {
     } finally {
       setLoading(false);
     }
-  }, [since, until, campaignFilter, supabaseUrl, anonKey]);
+  }, [since, until, campaignFilter, activeAccount?.ad_account_id, supabaseUrl, anonKey]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 

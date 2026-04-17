@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useAccountContext } from '@/contexts/AccountContext';
 
 export interface ContentAdRow {
   ad_id: string;
@@ -32,6 +33,7 @@ function daysAgoStr(n: number) {
 }
 
 export function useContentPerformance() {
+  const { activeAccount } = useAccountContext();
   const [rows, setRows] = useState<ContentWeekRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,8 +55,8 @@ export function useContentPerformance() {
     setLoading(true);
     setError(null);
     try {
-      // No account_id filter — pulls from all configured accounts
       const params = new URLSearchParams({ since, until });
+      if (activeAccount?.ad_account_id) params.set('account_id', activeAccount.ad_account_id);
       if (campaignFilter.trim()) params.set('campaign_contains', campaignFilter.trim());
 
       const res = await fetch(`${supabaseUrl}/functions/v1/content-performance-feed?${params}`, {
@@ -68,7 +70,7 @@ export function useContentPerformance() {
     } finally {
       setLoading(false);
     }
-  }, [since, until, campaignFilter, supabaseUrl, anonKey]);
+  }, [since, until, campaignFilter, activeAccount?.ad_account_id, supabaseUrl, anonKey]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
